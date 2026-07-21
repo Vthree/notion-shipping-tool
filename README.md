@@ -98,6 +98,11 @@
 
 如果商品結尾沒有可辨識的數量，工具會預設數量為 `1`，並在頁面上顯示「未辨識數量」統計。
 
+
+整理後excel畫面：
+<img width="2929" height="1510" alt="螢幕擷取畫面 2026-07-21 230405" src="https://github.com/user-attachments/assets/9232c237-07d9-449b-8ca7-f82f169d84f4" />
+
+
 ## 使用方式
 
 1. 下載 `notion-shipping-tool.html`
