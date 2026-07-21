@@ -100,6 +100,9 @@
 
 
 範例
+工具:
+<img width="1020" height="671" alt="image" src="https://github.com/user-attachments/assets/ac4202f3-e3ef-46c8-a0d9-7a2f528f6285" />
+
 整理前csv:
 <img width="1494" height="1053" alt="image" src="https://github.com/user-attachments/assets/e790cdee-3b87-4d43-af4f-27b01c6d3e6c" />
 
