@@ -1,0 +1,3343 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>出貨撿貨表轉換工具</title>
+
+  <style>
+    :root {
+      --paper: #f3eee3;
+      --card: rgba(255, 253, 248, 0.95);
+      --ink: #252921;
+      --muted: #74796f;
+      --green: #245c4d;
+      --green-dark: #173e34;
+      --orange: #df642d;
+      --line: #d8cebd;
+      --gray-cell: #d9d9d9;
+      --error: #a43828;
+      --warning: #95601d;
+      --red: #d00000;
+      --shadow: 0 24px 70px rgba(43, 50, 39, 0.14);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--ink);
+      font-family:
+        "Noto Serif TC",
+        "Songti TC",
+        "Microsoft JhengHei",
+        serif;
+      background:
+        radial-gradient(
+          circle at 8% 8%,
+          rgba(223, 100, 45, 0.13),
+          transparent 25rem
+        ),
+        radial-gradient(
+          circle at 92% 4%,
+          rgba(36, 92, 77, 0.15),
+          transparent 30rem
+        ),
+        repeating-linear-gradient(
+          0deg,
+          rgba(36, 40, 33, 0.025) 0,
+          rgba(36, 40, 33, 0.025) 1px,
+          transparent 1px,
+          transparent 28px
+        ),
+        var(--paper);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .shell {
+      width: min(1260px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 56px 0 80px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: 32px;
+      margin-bottom: 28px;
+    }
+
+    .eyebrow {
+      margin: 0 0 12px;
+      color: var(--orange);
+      font-family: "Microsoft JhengHei", sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+    }
+
+    h1 {
+      max-width: 850px;
+      margin: 0;
+      font-size: clamp(38px, 6vw, 72px);
+      line-height: 1;
+      letter-spacing: -0.045em;
+    }
+
+    .stamp {
+      display: grid;
+      width: 100px;
+      height: 100px;
+      place-items: center;
+      border: 2px solid var(--orange);
+      border-radius: 50%;
+      color: var(--orange);
+      font-family: "Microsoft JhengHei", sans-serif;
+      font-weight: 700;
+      line-height: 1.35;
+      text-align: center;
+      transform: rotate(6deg);
+    }
+
+    .panel {
+      overflow: hidden;
+      border: 1px solid rgba(36, 92, 77, 0.18);
+      border-radius: 24px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 290px;
+      gap: 22px;
+      padding: 28px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .drop-zone {
+      position: relative;
+      min-height: 185px;
+      padding: 28px;
+      border: 2px dashed #a4b5a8;
+      border-radius: 18px;
+      background: rgba(36, 92, 77, 0.035);
+      cursor: pointer;
+      transition:
+        border-color 0.2s,
+        background 0.2s,
+        transform 0.2s;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.dragging {
+      border-color: var(--orange);
+      background: rgba(223, 100, 45, 0.06);
+      transform: translateY(-2px);
+    }
+
+    .drop-zone input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .drop-zone strong {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--green-dark);
+      font-size: 22px;
+      overflow-wrap: anywhere;
+    }
+
+    .drop-zone span {
+      display: block;
+      color: var(--muted);
+      font-family: "Microsoft JhengHei", sans-serif;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 13px;
+    }
+
+    .mode-title {
+      color: var(--green-dark);
+      font-family: "Microsoft JhengHei", sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .mode-option {
+      display: grid;
+      grid-template-columns: 20px minmax(0, 1fr);
+      align-items: center;
+      gap: 10px;
+      min-height: 50px;
+      padding: 10px 14px;
+      border: 1px solid #b8c6b9;
+      border-radius: 12px;
+      background: #fffdf8;
+      cursor: pointer;
+      transition:
+        border-color 0.18s,
+        background 0.18s;
+    }
+
+    .mode-option:hover {
+      border-color: var(--green);
+    }
+
+    .mode-option:has(input:checked) {
+      border-color: var(--green);
+      background: rgba(36, 92, 77, 0.08);
+    }
+
+    .mode-option input {
+      width: 18px;
+      height: 18px;
+      margin: 0;
+      accent-color: var(--green);
+    }
+
+    .mode-copy {
+      font-family: "Microsoft JhengHei", sans-serif;
+      line-height: 1.35;
+    }
+
+    .mode-copy strong {
+      display: block;
+      font-size: 14px;
+    }
+
+    .mode-copy small {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    button {
+      min-height: 54px;
+      padding: 0 20px;
+      border: 0;
+      border-radius: 999px;
+      color: #fff;
+      background: var(--green);
+      font-family: "Microsoft JhengHei", sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition:
+        transform 0.18s,
+        background 0.18s,
+        opacity 0.18s;
+    }
+
+    button:hover:not(:disabled) {
+      background: var(--green-dark);
+      transform: translateY(-2px);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.38;
+    }
+
+    .privacy {
+      color: var(--muted);
+      font-family: "Microsoft JhengHei", sans-serif;
+      font-size: 12px;
+      line-height: 1.6;
+      text-align: center;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .metric {
+      padding: 20px 28px;
+      border-right: 1px solid var(--line);
+    }
+
+    .metric:last-child {
+      border-right: 0;
+    }
+
+    .metric b {
+      display: block;
+      color: var(--green);
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .metric span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-family: "Microsoft JhengHei", sans-serif;
+      font-size: 12px;
+    }
+
+    .message {
+      min-height: 48px;
+      padding: 14px 28px;
+      color: var(--muted);
+      font-family: "Microsoft JhengHei", sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .message.error {
+      color: var(--error);
+      background: #fff0e8;
+    }
+
+    .message.warning {
+      color: var(--warning);
+      background: #fff8e6;
+    }
+
+    .preview {
+      overflow: auto;
+      max-height: 590px;
+      border-top: 1px solid var(--line);
+    }
+
+    table {
+      width: 100%;
+      min-width: 1450px;
+      border-collapse: collapse;
+      font-family: "Microsoft JhengHei", sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    th {
+      position: sticky;
+      z-index: 2;
+      top: 0;
+      padding: 13px 14px;
+      border: 1px solid #000;
+      color: #fff;
+      background: var(--green);
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 12px 14px;
+      border: 1px solid #000;
+      background: #fffdf8;
+      vertical-align: middle;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    tr.order-start td {
+      border-top: 5px solid #000;
+    }
+
+    tr.order-end td {
+      border-bottom: 5px solid #000;
+    }
+
+    tr.order-row td:first-child {
+      border-left: 5px solid #000;
+    }
+
+    tr.order-row td:last-child {
+      border-right: 5px solid #000;
+    }
+
+    td.shipping-number {
+      background: var(--gray-cell);
+      text-align: center;
+    }
+
+    td.centered,
+    td.quantity {
+      text-align: center;
+    }
+
+    td.product {
+      min-width: 430px;
+    }
+
+    td.address {
+      min-width: 320px;
+    }
+
+    .vertical-red {
+      color: var(--red);
+    }
+
+    .empty {
+      padding: 56px 24px;
+      color: var(--muted);
+      font-family: "Microsoft JhengHei", sans-serif;
+      text-align: center;
+    }
+
+    footer {
+      margin-top: 18px;
+      color: var(--muted);
+      font-family: "Microsoft JhengHei", sans-serif;
+      font-size: 12px;
+      line-height: 1.7;
+      text-align: center;
+    }
+
+    @media (max-width: 760px) {
+      .shell {
+        width: min(100% - 20px, 1260px);
+        padding-top: 32px;
+      }
+
+      header {
+        grid-template-columns: 1fr;
+      }
+
+      .stamp {
+        display: none;
+      }
+
+      .controls {
+        grid-template-columns: 1fr;
+        padding: 18px;
+      }
+
+      .metrics {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .metric:nth-child(2) {
+        border-right: 0;
+      }
+
+      .metric:nth-child(-n + 2) {
+        border-bottom: 1px solid var(--line);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <p class="eyebrow">NOTION CSV → XLSX</p>
+        <h1>出貨撿貨表<br>轉換工具</h1>
+      </div>
+
+      <div class="stamp">本機<br>處理</div>
+    </header>
+
+    <section class="panel">
+      <div class="controls">
+        <label id="dropZone" class="drop-zone">
+          <input
+            id="fileInput"
+            type="file"
+            accept=".csv,text/csv"
+          >
+
+          <strong id="fileTitle">
+            選擇或拖入 Notion CSV
+          </strong>
+
+          <span>
+            所有儲存格先套用黑色細框線，再為每筆訂單套用粗外框。<br>
+            同人、加固、重量及尺寸仍維持縱向合併。<br>
+            商品資訊依換行拆分，並自動擷取每項商品數量。
+          </span>
+        </label>
+
+        <div class="actions">
+          <div class="mode-title">
+            選擇匯出版本
+          </div>
+
+          <label class="mode-option">
+            <input
+              type="radio"
+              name="shippingMode"
+              value="collect"
+              checked
+            >
+
+            <span class="mode-copy">
+              <strong>順豐到付</strong>
+              <small>原本的 10 欄格式</small>
+            </span>
+          </label>
+
+          <label class="mode-option">
+            <input
+              type="radio"
+              name="shippingMode"
+              value="prepaid"
+            >
+
+            <span class="mode-copy">
+              <strong>順豐寄付</strong>
+              <small>新增重量、尺寸，共 12 欄</small>
+            </span>
+          </label>
+
+          <button id="downloadBtn" type="button" disabled>
+            下載 XLSX 出貨表
+          </button>
+
+          <div class="privacy">
+            資料只在瀏覽器內處理<br>
+            不會上傳至網路
+          </div>
+        </div>
+      </div>
+
+      <div class="metrics">
+        <div class="metric">
+          <b id="orderCount">0</b>
+          <span>有效訂單</span>
+        </div>
+
+        <div class="metric">
+          <b id="productCount">0</b>
+          <span>商品列數</span>
+        </div>
+
+        <div class="metric">
+          <b id="quantityCount">0</b>
+          <span>商品總數量</span>
+        </div>
+
+        <div class="metric">
+          <b id="warningCount">0</b>
+          <span>未辨識數量</span>
+        </div>
+      </div>
+
+      <div id="message" class="message">
+        尚未選擇檔案。
+      </div>
+
+      <div id="preview" class="preview">
+        <div class="empty">
+          選擇 CSV 後，這裡會顯示前 40 個商品格。
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      輸出為標準 XLSX；下載檔名沿用上傳的 CSV 原始檔名。
+    </footer>
+  </main>
+
+  <script>
+    "use strict";
+
+    const MODE_COLLECT = "collect";
+    const MODE_PREPAID = "prepaid";
+
+    const REQUIRED_SOURCE_HEADERS = [
+      "出貨編號",
+      "收件人",
+      "加固",
+      "商品資訊",
+      "電話",
+      "地址"
+    ];
+
+    const COLLECT_COLUMNS = [
+      {
+        key: "shippingNumber",
+        title: "出貨編號",
+        width: 17,
+        style: "shipping",
+        firstOnly: true
+      },
+      {
+        key: "recipient",
+        title: "收件人",
+        width: 14,
+        style: "text",
+        firstOnly: true
+      },
+      {
+        key: "samePerson",
+        title: "同人",
+        width: 10,
+        style: "center",
+        merge: true
+      },
+      {
+        key: "reinforcement",
+        title: "加固",
+        width: 11,
+        style: "center",
+        merge: true
+      },
+      {
+        key: "product",
+        title: "商品資訊",
+        width: 62,
+        style: "product"
+      },
+      {
+        key: "quantity",
+        title: "數量",
+        width: 9,
+        style: "number"
+      },
+      {
+        key: "picker",
+        title: "撿貨員",
+        width: 12,
+        style: "center"
+      },
+      {
+        key: "packer",
+        title: "打包員",
+        width: 12,
+        style: "center"
+      },
+      {
+        key: "phone",
+        title: "電話",
+        width: 18,
+        style: "text",
+        firstOnly: true
+      },
+      {
+        key: "address",
+        title: "地址",
+        width: 48,
+        style: "address",
+        firstOnly: true
+      }
+    ];
+
+    const PREPAID_COLUMNS = [
+      {
+        key: "shippingNumber",
+        title: "出貨編號",
+        width: 19,
+        style: "shipping",
+        firstOnly: true
+      },
+      {
+        key: "recipient",
+        title: "收件人",
+        width: 14,
+        style: "text",
+        firstOnly: true
+      },
+      {
+        key: "samePerson",
+        title: "同人",
+        width: 10,
+        style: "center",
+        merge: true
+      },
+      {
+        key: "reinforcement",
+        title: "加固",
+        width: 11,
+        style: "center",
+        merge: true
+      },
+      {
+        key: "product",
+        title: "商品資訊",
+        width: 62,
+        style: "product"
+      },
+      {
+        key: "quantity",
+        title: "數量",
+        width: 9,
+        style: "number"
+      },
+      {
+        key: "weight",
+        title: "重量",
+        width: 11,
+        style: "center",
+        merge: true
+      },
+      {
+        key: "dimensions",
+        title: "尺寸",
+        width: 13,
+        style: "center",
+        merge: true
+      },
+      {
+        key: "picker",
+        title: "撿貨員",
+        width: 12,
+        style: "center"
+      },
+      {
+        key: "packer",
+        title: "打包員",
+        width: 12,
+        style: "center"
+      },
+      {
+        key: "phone",
+        title: "電話",
+        width: 18,
+        style: "text",
+        firstOnly: true
+      },
+      {
+        key: "address",
+        title: "地址",
+        width: 48,
+        style: "address",
+        firstOnly: true
+      }
+    ];
+
+    /*
+     * 每個 border mask 都以「四邊細框」為基礎，
+     * mask 指定的方向再改為粗框。
+     */
+    const BORDER_TOP = 1;
+    const BORDER_BOTTOM = 2;
+    const BORDER_LEFT = 4;
+    const BORDER_RIGHT = 8;
+    const BORDER_VARIANTS = 16;
+
+    const BASE_STYLE_IDS = {
+      text: 0,
+      header: 1,
+      center: 2,
+      product: 3,
+      number: 4,
+      address: 5,
+      shipping: 6
+    };
+
+    const BASE_STYLE_COUNT = 7;
+
+    const fileInput =
+      document.getElementById("fileInput");
+
+    const dropZone =
+      document.getElementById("dropZone");
+
+    const downloadBtn =
+      document.getElementById("downloadBtn");
+
+    const preview =
+      document.getElementById("preview");
+
+    const message =
+      document.getElementById("message");
+
+    const fileTitle =
+      document.getElementById("fileTitle");
+
+    const modeInputs =
+      document.querySelectorAll(
+        'input[name="shippingMode"]'
+      );
+
+    let prepared = null;
+
+    fileInput.addEventListener(
+      "change",
+      event => {
+        const file =
+          event.target.files[0];
+
+        if (file) {
+          loadFile(file);
+        }
+      }
+    );
+
+    modeInputs.forEach(input => {
+      input.addEventListener(
+        "change",
+        () => {
+          if (prepared) {
+            renderPreview(prepared);
+
+            setMessage(
+              `目前選擇：` +
+              `${getModeLabel(getSelectedMode())}。`
+            );
+          }
+        }
+      );
+    });
+
+    [
+      "dragenter",
+      "dragover"
+    ].forEach(type => {
+      dropZone.addEventListener(
+        type,
+        event => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          dropZone.classList.add(
+            "dragging"
+          );
+        }
+      );
+    });
+
+    [
+      "dragleave",
+      "drop"
+    ].forEach(type => {
+      dropZone.addEventListener(
+        type,
+        event => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          dropZone.classList.remove(
+            "dragging"
+          );
+        }
+      );
+    });
+
+    dropZone.addEventListener(
+      "drop",
+      event => {
+        const file =
+          event.dataTransfer.files[0];
+
+        if (file) {
+          loadFile(file);
+        }
+      }
+    );
+
+    downloadBtn.addEventListener(
+      "click",
+      () => {
+        if (!prepared) {
+          return;
+        }
+
+        try {
+          const mode =
+            getSelectedMode();
+
+          setMessage(
+            `正在產生${getModeLabel(mode)} XLSX……`
+          );
+
+          const blob =
+            createXlsx(
+              prepared,
+              mode
+            );
+
+          const outputFileName =
+            getOutputFileName(
+              prepared.originalFileName
+            );
+
+          downloadBlob(
+            blob,
+            outputFileName
+          );
+
+          setMessage(
+            `${getModeLabel(mode)}已產生：` +
+            outputFileName
+          );
+        } catch (error) {
+          console.error(error);
+
+          setMessage(
+            `產生 XLSX 失敗：` +
+            error.message,
+            "error"
+          );
+        }
+      }
+    );
+
+    async function loadFile(file) {
+      prepared = null;
+      downloadBtn.disabled = true;
+
+      resetMetrics();
+
+      if (!/\.csv$/i.test(file.name)) {
+        setMessage(
+          "請選擇副檔名為 .csv 的檔案。",
+          "error"
+        );
+
+        return;
+      }
+
+      try {
+        setMessage(
+          "正在讀取並整理 CSV……"
+        );
+
+        const buffer =
+          await file.arrayBuffer();
+
+        const text =
+          decodeCsv(buffer);
+
+        const csvRows =
+          parseCsv(text);
+
+        if (csvRows.length < 2) {
+          throw new Error(
+            "CSV 中沒有可處理的資料"
+          );
+        }
+
+        const headers =
+          csvRows[0].map(
+            (value, index) => {
+              const normalized =
+                String(value || "")
+                  .replace(/^\uFEFF/, "")
+                  .trim();
+
+              return normalized ||
+                `未命名欄位${index + 1}`;
+            }
+          );
+
+        const indexes =
+          resolveSourceIndexes(
+            headers
+          );
+
+        const sourceRows =
+          normalizeSourceRows(
+            csvRows.slice(1),
+            headers.length
+          );
+
+        const groups =
+          sourceRows
+            .map(
+              (row, sourceIndex) => {
+                return createOrderGroup(
+                  row,
+                  indexes,
+                  sourceIndex
+                );
+              }
+            )
+            .filter(
+              group => group !== null
+            );
+
+        if (!groups.length) {
+          throw new Error(
+            "沒有找到有效的出貨資料"
+          );
+        }
+
+        sortCompleteOrders(
+          groups
+        );
+
+        const productCount =
+          groups.reduce(
+            (total, group) => {
+              return total +
+                group.products.length;
+            },
+            0
+          );
+
+        const quantityCount =
+          groups.reduce(
+            (total, group) => {
+              return total +
+                group.products.reduce(
+                  (subtotal, product) => {
+                    return subtotal +
+                      product.quantityNumber;
+                  },
+                  0
+                );
+            },
+            0
+          );
+
+        const warningCount =
+          groups.reduce(
+            (total, group) => {
+              return total +
+                group.products.filter(
+                  product =>
+                    !product.quantityFound
+                ).length;
+            },
+            0
+          );
+
+        prepared = {
+          originalFileName:
+            file.name,
+          groups
+        };
+
+        fileTitle.textContent =
+          file.name;
+
+        document.getElementById(
+          "orderCount"
+        ).textContent =
+          groups.length.toLocaleString();
+
+        document.getElementById(
+          "productCount"
+        ).textContent =
+          productCount.toLocaleString();
+
+        document.getElementById(
+          "quantityCount"
+        ).textContent =
+          quantityCount.toLocaleString();
+
+        document.getElementById(
+          "warningCount"
+        ).textContent =
+          warningCount.toLocaleString();
+
+        renderPreview(
+          prepared
+        );
+
+        downloadBtn.disabled = false;
+
+        if (warningCount > 0) {
+          setMessage(
+            `讀取完成：` +
+            `${groups.length} 筆訂單、` +
+            `${productCount} 個商品格；` +
+            `${warningCount} 個商品未找到數量，` +
+            `已預設為 1。`,
+            "warning"
+          );
+        } else {
+          setMessage(
+            `讀取完成：` +
+            `${groups.length} 筆訂單、` +
+            `${productCount} 個商品格。`
+          );
+        }
+      } catch (error) {
+        console.error(error);
+
+        prepared = null;
+        downloadBtn.disabled = true;
+
+        setMessage(
+          `無法處理檔案：` +
+          error.message,
+          "error"
+        );
+
+        preview.innerHTML = `
+          <div class="empty">
+            請確認 CSV 包含出貨編號、收件人、加固、
+            商品資訊、電話及地址欄位。
+          </div>
+        `;
+      }
+    }
+
+    function getSelectedMode() {
+      const selected =
+        document.querySelector(
+          'input[name="shippingMode"]:checked'
+        );
+
+      return selected
+        ? selected.value
+        : MODE_COLLECT;
+    }
+
+    function getModeLabel(mode) {
+      return mode === MODE_PREPAID
+        ? "順豐寄付"
+        : "順豐到付";
+    }
+
+    function getColumns(mode) {
+      return mode === MODE_PREPAID
+        ? PREPAID_COLUMNS
+        : COLLECT_COLUMNS;
+    }
+
+    function resolveSourceIndexes(
+      headers
+    ) {
+      const indexes = {};
+
+      for (
+        const requiredHeader of
+        REQUIRED_SOURCE_HEADERS
+      ) {
+        const index =
+          headers.findIndex(
+            header =>
+              header.trim() ===
+              requiredHeader
+          );
+
+        if (index === -1) {
+          throw new Error(
+            `找不到「${requiredHeader}」欄位`
+          );
+        }
+
+        indexes[requiredHeader] =
+          index;
+      }
+
+      return indexes;
+    }
+
+    function normalizeSourceRows(
+      rows,
+      columnCount
+    ) {
+      return rows
+        .filter(row => {
+          return row.some(value => {
+            return (
+              String(value || "")
+                .trim() !== ""
+            );
+          });
+        })
+        .map(row => {
+          const normalized =
+            Array(columnCount)
+              .fill("");
+
+          for (
+            let index = 0;
+            index < columnCount;
+            index++
+          ) {
+            normalized[index] =
+              row[index] == null
+                ? ""
+                : String(row[index]);
+          }
+
+          return normalized;
+        });
+    }
+
+    function createOrderGroup(
+      row,
+      indexes,
+      sourceIndex
+    ) {
+      const shippingNumber =
+        row[
+          indexes["出貨編號"]
+        ].trim();
+
+      const recipient =
+        row[
+          indexes["收件人"]
+        ].trim();
+
+      const reinforcement =
+        row[
+          indexes["加固"]
+        ].trim();
+
+      const productText =
+        row[
+          indexes["商品資訊"]
+        ];
+
+      const phone =
+        row[
+          indexes["電話"]
+        ].trim();
+
+      const address =
+        row[
+          indexes["地址"]
+        ].trim();
+
+      if (
+        !shippingNumber &&
+        !recipient &&
+        !productText.trim() &&
+        !phone &&
+        !address
+      ) {
+        return null;
+      }
+
+      const products =
+        splitProductLines(
+          productText
+        ).map(
+          parseProductAndQuantity
+        );
+
+      return {
+        sourceIndex,
+        shippingNumber,
+        recipient,
+        samePerson: "",
+        reinforcement,
+        weight: "",
+        dimensions: "",
+        picker: "",
+        packer: "",
+        phone,
+        address,
+        products
+      };
+    }
+
+    function splitProductLines(value) {
+      const lines =
+        String(value || "")
+          .split(/\r\n|\n|\r/)
+          .map(line => line.trim())
+          .filter(Boolean);
+
+      return lines.length
+        ? lines
+        : [""];
+    }
+
+    function parseProductAndQuantity(
+      line
+    ) {
+      const normalized =
+        String(line || "").trim();
+
+      const match =
+        normalized.match(
+          /^(.*?)\s*[xXｘ×]\s*(\d+)(\s*(?:[—–-].*)?)$/
+        );
+
+      if (!match) {
+        return {
+          name: normalized,
+          quantity: "1",
+          quantityNumber: 1,
+          quantityFound: false
+        };
+      }
+
+      const before =
+        match[1].trim();
+
+      const quantity =
+        match[2];
+
+      const note =
+        match[3].trim();
+
+      return {
+        name: note
+          ? `${before} ${note}`.trim()
+          : before,
+        quantity,
+        quantityNumber:
+          Number(quantity),
+        quantityFound: true
+      };
+    }
+
+    function sortCompleteOrders(
+      groups
+    ) {
+      groups.sort(
+        (left, right) => {
+          const leftNumber =
+            String(
+              left.shippingNumber || ""
+            ).trim();
+
+          const rightNumber =
+            String(
+              right.shippingNumber || ""
+            ).trim();
+
+          if (
+            !leftNumber &&
+            !rightNumber
+          ) {
+            return (
+              left.sourceIndex -
+              right.sourceIndex
+            );
+          }
+
+          if (!leftNumber) {
+            return 1;
+          }
+
+          if (!rightNumber) {
+            return -1;
+          }
+
+          const leftParts =
+            getNumberParts(
+              leftNumber
+            );
+
+          const rightParts =
+            getNumberParts(
+              rightNumber
+            );
+
+          const length = Math.max(
+            leftParts.length,
+            rightParts.length
+          );
+
+          for (
+            let index = 0;
+            index < length;
+            index++
+          ) {
+            const leftPart =
+              leftParts[index];
+
+            const rightPart =
+              rightParts[index];
+
+            if (
+              leftPart === undefined
+            ) {
+              return -1;
+            }
+
+            if (
+              rightPart === undefined
+            ) {
+              return 1;
+            }
+
+            if (
+              leftPart !== rightPart
+            ) {
+              return (
+                leftPart -
+                rightPart
+              );
+            }
+          }
+
+          const textResult =
+            leftNumber.localeCompare(
+              rightNumber,
+              "zh-Hant"
+            );
+
+          return textResult !== 0
+            ? textResult
+            : (
+                left.sourceIndex -
+                right.sourceIndex
+              );
+        }
+      );
+    }
+
+    function getNumberParts(value) {
+      const matches =
+        String(value).match(/\d+/g);
+
+      return matches
+        ? matches.map(Number)
+        : [];
+    }
+
+    function getColumnValue(
+      group,
+      product,
+      column,
+      first
+    ) {
+      if (
+        column.key === "product"
+      ) {
+        return product.name;
+      }
+
+      if (
+        column.key === "quantity"
+      ) {
+        return product.quantity;
+      }
+
+      if (
+        column.firstOnly ||
+        column.merge
+      ) {
+        return first
+          ? group[column.key] || ""
+          : "";
+      }
+
+      return (
+        group[column.key] || ""
+      );
+    }
+
+    function renderPreview(data) {
+      const columns =
+        getColumns(
+          getSelectedMode()
+        );
+
+      const visibleGroups = [];
+
+      let displayedRows = 0;
+
+      for (
+        const group of data.groups
+      ) {
+        if (
+          displayedRows >= 40 &&
+          visibleGroups.length
+        ) {
+          break;
+        }
+
+        visibleGroups.push(group);
+
+        displayedRows +=
+          group.products.length;
+      }
+
+      const headerHtml =
+        columns
+          .map(column => {
+            return (
+              `<th>` +
+                escapeHtml(
+                  column.title
+                ) +
+              `</th>`
+            );
+          })
+          .join("");
+
+      const body = [];
+
+      for (
+        const group of visibleGroups
+      ) {
+        const productCount =
+          group.products.length;
+
+        group.products.forEach(
+          (product, productIndex) => {
+            const first =
+              productIndex === 0;
+
+            const last =
+              productIndex ===
+              productCount - 1;
+
+            const cells = [];
+
+            columns.forEach(column => {
+              if (
+                column.merge &&
+                !first
+              ) {
+                return;
+              }
+
+              const value =
+                getColumnValue(
+                  group,
+                  product,
+                  column,
+                  first
+                );
+
+              const classes = [];
+
+              if (
+                column.key ===
+                "shippingNumber"
+              ) {
+                classes.push(
+                  "shipping-number"
+                );
+              }
+
+              if (
+                column.style ===
+                  "center" ||
+                column.style ===
+                  "number"
+              ) {
+                classes.push(
+                  "centered"
+                );
+              }
+
+              if (
+                column.key ===
+                "quantity"
+              ) {
+                classes.push(
+                  "quantity"
+                );
+              }
+
+              if (
+                column.key ===
+                "product"
+              ) {
+                classes.push(
+                  "product"
+                );
+              }
+
+              if (
+                column.key ===
+                "address"
+              ) {
+                classes.push(
+                  "address"
+                );
+              }
+
+              const rowspan =
+                column.merge &&
+                productCount > 1
+                  ? (
+                      ` rowspan="` +
+                      `${productCount}"`
+                    )
+                  : "";
+
+              const content =
+                column.key ===
+                "product"
+                  ? formatProductPreview(
+                      value
+                    )
+                  : escapeHtml(value);
+
+              cells.push(
+                `<td ` +
+                  `class="${classes.join(" ")}"` +
+                  rowspan +
+                `>` +
+                  content +
+                `</td>`
+              );
+            });
+
+            const rowClasses = [
+              "order-row"
+            ];
+
+            if (first) {
+              rowClasses.push(
+                "order-start"
+              );
+            }
+
+            if (last) {
+              rowClasses.push(
+                "order-end"
+              );
+            }
+
+            body.push(
+              `<tr class="${rowClasses.join(" ")}">` +
+                cells.join("") +
+              `</tr>`
+            );
+          }
+        );
+      }
+
+      preview.innerHTML =
+        `<table>` +
+          `<thead>` +
+            `<tr>${headerHtml}</tr>` +
+          `</thead>` +
+          `<tbody>` +
+            body.join("") +
+          `</tbody>` +
+        `</table>`;
+    }
+
+    function formatProductPreview(
+      value
+    ) {
+      return escapeHtml(value).replace(
+        /\[豎排\]/g,
+        '[<span class="vertical-red">豎排</span>]'
+      );
+    }
+
+    function getOutputFileName(
+      originalFileName
+    ) {
+      let fileName =
+        String(
+          originalFileName ||
+          "出貨表.csv"
+        ).trim();
+
+      fileName = fileName
+        .replace(
+          /[\\/:*?"<>|]/g,
+          "_"
+        )
+        .replace(/[. ]+$/g, "");
+
+      if (!fileName) {
+        return "出貨表.xlsx";
+      }
+
+      return /\.csv$/i.test(fileName)
+        ? fileName.replace(
+            /\.csv$/i,
+            ".xlsx"
+          )
+        : `${fileName}.xlsx`;
+    }
+
+    function createXlsx(
+      data,
+      mode
+    ) {
+      const now =
+        new Date().toISOString();
+
+      const columns =
+        getColumns(mode);
+
+      const files = {
+        "[Content_Types].xml":
+          xlsxContentTypes(),
+
+        "_rels/.rels":
+          xlsxRootRelationships(),
+
+        "docProps/app.xml":
+          xlsxAppProperties(),
+
+        "docProps/core.xml":
+          xlsxCoreProperties(now),
+
+        "xl/workbook.xml":
+          xlsxWorkbook(),
+
+        "xl/_rels/workbook.xml.rels":
+          xlsxWorkbookRelationships(),
+
+        "xl/styles.xml":
+          xlsxStyles(),
+
+        "xl/worksheets/sheet1.xml":
+          xlsxWorksheet(
+            data,
+            columns
+          )
+      };
+
+      return createZip(files);
+    }
+
+    function getStyleId(
+      styleName,
+      borderMask
+    ) {
+      return (
+        BASE_STYLE_IDS[styleName] *
+        BORDER_VARIANTS +
+        borderMask
+      );
+    }
+
+    function getBorderMask(
+      columnIndex,
+      columnCount,
+      first,
+      last
+    ) {
+      let mask = 0;
+
+      if (first) {
+        mask |= BORDER_TOP;
+      }
+
+      if (last) {
+        mask |= BORDER_BOTTOM;
+      }
+
+      if (columnIndex === 0) {
+        mask |= BORDER_LEFT;
+      }
+
+      if (
+        columnIndex ===
+        columnCount - 1
+      ) {
+        mask |= BORDER_RIGHT;
+      }
+
+      return mask;
+    }
+
+    function xlsxWorksheet(
+      data,
+      columns
+    ) {
+      const rows = [];
+      const merges = [];
+
+      const columnCount =
+        columns.length;
+
+      /*
+       * 標題列使用所有細框線，不屬於任何收件人訂單。
+       */
+      rows.push(
+        `<row r="1" ht="30" customHeight="1">` +
+          columns
+            .map(
+              (column, index) => {
+                return xlsxTextCell(
+                  1,
+                  index + 1,
+                  column.title,
+                  getStyleId(
+                    "header",
+                    0
+                  )
+                );
+              }
+            )
+            .join("") +
+        `</row>`
+      );
+
+      let currentRow = 2;
+
+      for (
+        const group of data.groups
+      ) {
+        const products =
+          group.products.length
+            ? group.products
+            : [{
+                name: "",
+                quantity: "1",
+                quantityNumber: 1,
+                quantityFound: false
+              }];
+
+        const startRow =
+          currentRow;
+
+        const endRow =
+          startRow +
+          products.length - 1;
+
+        products.forEach(
+          (product, productIndex) => {
+            const first =
+              productIndex === 0;
+
+            const last =
+              productIndex ===
+              products.length - 1;
+
+            const cells = [];
+
+            columns.forEach(
+              (
+                column,
+                columnIndex
+              ) => {
+                const value =
+                  getColumnValue(
+                    group,
+                    product,
+                    column,
+                    first
+                  );
+
+                /*
+                 * 每一格都建立實際儲存格。
+                 * mask 只負責將訂單最外圍從 thin 改成 thick。
+                 */
+                let borderMask =
+                  getBorderMask(
+                    columnIndex,
+                    columnCount,
+                    first,
+                    last
+                  );
+
+                /*
+                 * 合併欄位的可見框線由整個合併範圍組成：
+                 * 第一列保留粗上框，最後一列保留粗下框。
+                 * 每列仍建立底層空白儲存格及所有細框線樣式。
+                 */
+                const styleId =
+                  getStyleId(
+                    column.style,
+                    borderMask
+                  );
+
+                if (
+                  column.key ===
+                  "product"
+                ) {
+                  cells.push(
+                    xlsxProductCell(
+                      currentRow,
+                      columnIndex + 1,
+                      value,
+                      styleId
+                    )
+                  );
+                } else if (
+                  column.key ===
+                  "quantity"
+                ) {
+                  cells.push(
+                    xlsxNumberCell(
+                      currentRow,
+                      columnIndex + 1,
+                      value,
+                      styleId
+                    )
+                  );
+                } else {
+                  cells.push(
+                    xlsxTextCell(
+                      currentRow,
+                      columnIndex + 1,
+                      value,
+                      styleId
+                    )
+                  );
+                }
+              }
+            );
+
+            rows.push(
+              `<row ` +
+                `r="${currentRow}" ` +
+                `ht="25" ` +
+                `customHeight="1">` +
+                cells.join("") +
+              `</row>`
+            );
+
+            currentRow++;
+          }
+        );
+
+        if (
+          products.length > 1
+        ) {
+          columns.forEach(
+            (column, index) => {
+              if (!column.merge) {
+                return;
+              }
+
+              const letter =
+                xlsxColumnName(
+                  index + 1
+                );
+
+              merges.push(
+                `${letter}${startRow}:` +
+                `${letter}${endRow}`
+              );
+            }
+          );
+        }
+      }
+
+      const lastRow =
+        Math.max(
+          1,
+          currentRow - 1
+        );
+
+      const lastColumn =
+        xlsxColumnName(
+          columnCount
+        );
+
+      const mergeXml =
+        merges.length
+          ? (
+              `<mergeCells ` +
+                `count="${merges.length}">` +
+                merges.map(
+                  reference => {
+                    return (
+                      `<mergeCell ` +
+                        `ref="${reference}"` +
+                      `/>`
+                    );
+                  }
+                ).join("") +
+              `</mergeCells>`
+            )
+          : "";
+
+      const columnsXml =
+        columns.map(
+          (column, index) => {
+            return (
+              `<col ` +
+                `min="${index + 1}" ` +
+                `max="${index + 1}" ` +
+                `width="${column.width}" ` +
+                `customWidth="1"` +
+              `/>`
+            );
+          }
+        ).join("");
+
+      return (
+        xlsxXmlHeader() +
+
+        `<worksheet ` +
+          `xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">` +
+
+          `<dimension ` +
+            `ref="A1:${lastColumn}${lastRow}"` +
+          `/>` +
+
+          `<sheetViews>` +
+            `<sheetView workbookViewId="0">` +
+              `<pane ` +
+                `ySplit="1" ` +
+                `topLeftCell="A2" ` +
+                `activePane="bottomLeft" ` +
+                `state="frozen"` +
+              `/>` +
+
+              `<selection ` +
+                `pane="bottomLeft" ` +
+                `activeCell="A2" ` +
+                `sqref="A2"` +
+              `/>` +
+            `</sheetView>` +
+          `</sheetViews>` +
+
+          `<sheetFormatPr ` +
+            `defaultRowHeight="25"` +
+          `/>` +
+
+          `<cols>` +
+            columnsXml +
+          `</cols>` +
+
+          `<sheetData>` +
+            rows.join("") +
+          `</sheetData>` +
+
+          mergeXml +
+
+          `<pageMargins ` +
+            `left="0.25" ` +
+            `right="0.25" ` +
+            `top="0.5" ` +
+            `bottom="0.5" ` +
+            `header="0.2" ` +
+            `footer="0.2"` +
+          `/>` +
+
+          `<pageSetup ` +
+            `orientation="landscape" ` +
+            `paperSize="9" ` +
+            `fitToWidth="1" ` +
+            `fitToHeight="0"` +
+          `/>` +
+
+        `</worksheet>`
+      );
+    }
+
+    function xlsxTextCell(
+      row,
+      column,
+      value,
+      styleId
+    ) {
+      const reference =
+        `${xlsxColumnName(column)}${row}`;
+
+      const text =
+        cleanXmlText(
+          String(
+            value == null
+              ? ""
+              : value
+          )
+        );
+
+      return (
+        `<c ` +
+          `r="${reference}" ` +
+          `s="${styleId}" ` +
+          `t="inlineStr">` +
+
+          `<is>` +
+            `<t xml:space="preserve">` +
+              escapeXml(text) +
+            `</t>` +
+          `</is>` +
+
+        `</c>`
+      );
+    }
+
+    function xlsxNumberCell(
+      row,
+      column,
+      value,
+      styleId
+    ) {
+      const reference =
+        `${xlsxColumnName(column)}${row}`;
+
+      const parsed =
+        Number.parseInt(
+          String(value),
+          10
+        );
+
+      const number =
+        Number.isFinite(parsed)
+          ? parsed
+          : 1;
+
+      return (
+        `<c ` +
+          `r="${reference}" ` +
+          `s="${styleId}" ` +
+          `t="n">` +
+          `<v>${number}</v>` +
+        `</c>`
+      );
+    }
+
+    function xlsxProductCell(
+      row,
+      column,
+      value,
+      styleId
+    ) {
+      const reference =
+        `${xlsxColumnName(column)}${row}`;
+
+      const text =
+        cleanXmlText(
+          String(
+            value == null
+              ? ""
+              : value
+          )
+        );
+
+      if (
+        !text.includes("[豎排]")
+      ) {
+        return xlsxTextCell(
+          row,
+          column,
+          text,
+          styleId
+        );
+      }
+
+      const runs = [];
+      const pattern =
+        /\[豎排\]/g;
+
+      let cursor = 0;
+      let match;
+
+      while (
+        (match =
+          pattern.exec(text)) !== null
+      ) {
+        const before =
+          text.slice(
+            cursor,
+            match.index + 1
+          );
+
+        if (before) {
+          runs.push(
+            xlsxRichTextRun(
+              before,
+              "FF000000"
+            )
+          );
+        }
+
+        runs.push(
+          xlsxRichTextRun(
+            "豎排",
+            "FFFF0000"
+          )
+        );
+
+        cursor =
+          match.index +
+          match[0].length - 1;
+      }
+
+      const remainder =
+        text.slice(cursor);
+
+      if (remainder) {
+        runs.push(
+          xlsxRichTextRun(
+            remainder,
+            "FF000000"
+          )
+        );
+      }
+
+      return (
+        `<c ` +
+          `r="${reference}" ` +
+          `s="${styleId}" ` +
+          `t="inlineStr">` +
+
+          `<is>` +
+            runs.join("") +
+          `</is>` +
+
+        `</c>`
+      );
+    }
+
+    function xlsxRichTextRun(
+      text,
+      color
+    ) {
+      return (
+        `<r>` +
+          `<rPr>` +
+            `<rFont ` +
+              `val="Microsoft JhengHei"` +
+            `/>` +
+
+            `<charset val="136"/>` +
+            `<family val="2"/>` +
+            `<b/>` +
+
+            `<color ` +
+              `rgb="${color}"` +
+            `/>` +
+
+            `<sz val="10"/>` +
+          `</rPr>` +
+
+          `<t xml:space="preserve">` +
+            escapeXml(text) +
+          `</t>` +
+        `</r>`
+      );
+    }
+
+    function xlsxColumnName(
+      columnNumber
+    ) {
+      let result = "";
+      let number =
+        columnNumber;
+
+      while (number > 0) {
+        number--;
+
+        result =
+          String.fromCharCode(
+            65 + (number % 26)
+          ) + result;
+
+        number =
+          Math.floor(
+            number / 26
+          );
+      }
+
+      return result;
+    }
+
+    function xlsxStyles() {
+      const baseStyles = [
+        {
+          fontId: 0,
+          fillId: 0,
+          numFmtId: 164,
+          horizontal: "",
+          wrap: true
+        },
+        {
+          fontId: 1,
+          fillId: 2,
+          numFmtId: 164,
+          horizontal: "center",
+          wrap: true
+        },
+        {
+          fontId: 0,
+          fillId: 0,
+          numFmtId: 164,
+          horizontal: "center",
+          wrap: true
+        },
+        {
+          fontId: 0,
+          fillId: 0,
+          numFmtId: 164,
+          horizontal: "",
+          wrap: true
+        },
+        {
+          fontId: 0,
+          fillId: 0,
+          numFmtId: 0,
+          horizontal: "center",
+          wrap: false
+        },
+        {
+          fontId: 0,
+          fillId: 0,
+          numFmtId: 164,
+          horizontal: "",
+          wrap: true
+        },
+        {
+          fontId: 0,
+          fillId: 3,
+          numFmtId: 164,
+          horizontal: "center",
+          wrap: true
+        }
+      ];
+
+      const borders = [];
+
+      borders.push(
+        `<border>` +
+          `<left/>` +
+          `<right/>` +
+          `<top/>` +
+          `<bottom/>` +
+          `<diagonal/>` +
+        `</border>`
+      );
+
+      for (
+        let mask = 0;
+        mask < BORDER_VARIANTS;
+        mask++
+      ) {
+        borders.push(
+          createBorderStyle(mask)
+        );
+      }
+
+      const cellXfs = [];
+
+      for (
+        let base = 0;
+        base < BASE_STYLE_COUNT;
+        base++
+      ) {
+        for (
+          let mask = 0;
+          mask < BORDER_VARIANTS;
+          mask++
+        ) {
+          cellXfs.push(
+            createCellXf(
+              baseStyles[base],
+              mask + 1
+            )
+          );
+        }
+      }
+
+      return (
+        xlsxXmlHeader() +
+
+        `<styleSheet ` +
+          `xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">` +
+
+          `<numFmts count="1">` +
+            `<numFmt ` +
+              `numFmtId="164" ` +
+              `formatCode="@"` +
+            `/>` +
+          `</numFmts>` +
+
+          `<fonts count="2">` +
+            `<font>` +
+              `<b/>` +
+              `<sz val="10"/>` +
+              `<name ` +
+                `val="Microsoft JhengHei"` +
+              `/>` +
+              `<family val="2"/>` +
+              `<charset val="136"/>` +
+            `</font>` +
+
+            `<font>` +
+              `<b/>` +
+              `<color rgb="FFFFFFFF"/>` +
+              `<sz val="10"/>` +
+              `<name ` +
+                `val="Microsoft JhengHei"` +
+              `/>` +
+              `<family val="2"/>` +
+              `<charset val="136"/>` +
+            `</font>` +
+          `</fonts>` +
+
+          `<fills count="4">` +
+            `<fill>` +
+              `<patternFill ` +
+                `patternType="none"` +
+              `/>` +
+            `</fill>` +
+
+            `<fill>` +
+              `<patternFill ` +
+                `patternType="gray125"` +
+              `/>` +
+            `</fill>` +
+
+            `<fill>` +
+              `<patternFill ` +
+                `patternType="solid">` +
+                `<fgColor rgb="FF245C4D"/>` +
+                `<bgColor indexed="64"/>` +
+              `</patternFill>` +
+            `</fill>` +
+
+            `<fill>` +
+              `<patternFill ` +
+                `patternType="solid">` +
+                `<fgColor rgb="FFD9D9D9"/>` +
+                `<bgColor indexed="64"/>` +
+              `</patternFill>` +
+            `</fill>` +
+          `</fills>` +
+
+          `<borders count="${borders.length}">` +
+            borders.join("") +
+          `</borders>` +
+
+          `<cellStyleXfs count="1">` +
+            `<xf ` +
+              `numFmtId="0" ` +
+              `fontId="0" ` +
+              `fillId="0" ` +
+              `borderId="0"` +
+            `/>` +
+          `</cellStyleXfs>` +
+
+          `<cellXfs count="${cellXfs.length}">` +
+            cellXfs.join("") +
+          `</cellXfs>` +
+
+          `<cellStyles count="1">` +
+            `<cellStyle ` +
+              `name="Normal" ` +
+              `xfId="0" ` +
+              `builtinId="0"` +
+            `/>` +
+          `</cellStyles>` +
+
+          `<dxfs count="0"/>` +
+
+        `</styleSheet>`
+      );
+    }
+
+    /*
+     * 這裡等同於：
+     * 1. 全選後套用所有黑色細框線。
+     * 2. 再將指定的訂單外圍方向改成 thick。
+     */
+    function createBorderStyle(
+      mask
+    ) {
+      return (
+        `<border>` +
+          createBorderSide(
+            "left",
+            Boolean(
+              mask & BORDER_LEFT
+            )
+          ) +
+
+          createBorderSide(
+            "right",
+            Boolean(
+              mask & BORDER_RIGHT
+            )
+          ) +
+
+          createBorderSide(
+            "top",
+            Boolean(
+              mask & BORDER_TOP
+            )
+          ) +
+
+          createBorderSide(
+            "bottom",
+            Boolean(
+              mask & BORDER_BOTTOM
+            )
+          ) +
+
+          `<diagonal/>` +
+        `</border>`
+      );
+    }
+
+    function createBorderSide(
+      name,
+      isOuter
+    ) {
+      const style =
+        isOuter
+          ? "thick"
+          : "thin";
+
+      return (
+        `<${name} style="${style}">` +
+          `<color rgb="FF000000"/>` +
+        `</${name}>`
+      );
+    }
+
+    function createCellXf(
+      style,
+      borderId
+    ) {
+      const horizontal =
+        style.horizontal
+          ? (
+              ` horizontal="` +
+              `${style.horizontal}"`
+            )
+          : "";
+
+      const wrap =
+        style.wrap
+          ? ` wrapText="1"`
+          : "";
+
+      return (
+        `<xf ` +
+          `numFmtId="${style.numFmtId}" ` +
+          `fontId="${style.fontId}" ` +
+          `fillId="${style.fillId}" ` +
+          `borderId="${borderId}" ` +
+          `xfId="0" ` +
+          `applyNumberFormat="1" ` +
+          `applyFont="1" ` +
+          `applyFill="1" ` +
+          `applyAlignment="1" ` +
+          `applyBorder="1">` +
+
+          `<alignment` +
+            horizontal +
+            ` vertical="center"` +
+            wrap +
+          `/>` +
+
+        `</xf>`
+      );
+    }
+
+    function xlsxContentTypes() {
+      return (
+        xlsxXmlHeader() +
+
+        `<Types ` +
+          `xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
+
+          `<Default ` +
+            `Extension="rels" ` +
+            `ContentType="application/vnd.openxmlformats-package.relationships+xml"` +
+          `/>` +
+
+          `<Default ` +
+            `Extension="xml" ` +
+            `ContentType="application/xml"` +
+          `/>` +
+
+          `<Override ` +
+            `PartName="/xl/workbook.xml" ` +
+            `ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"` +
+          `/>` +
+
+          `<Override ` +
+            `PartName="/xl/worksheets/sheet1.xml" ` +
+            `ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"` +
+          `/>` +
+
+          `<Override ` +
+            `PartName="/xl/styles.xml" ` +
+            `ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"` +
+          `/>` +
+
+          `<Override ` +
+            `PartName="/docProps/core.xml" ` +
+            `ContentType="application/vnd.openxmlformats-package.core-properties+xml"` +
+          `/>` +
+
+          `<Override ` +
+            `PartName="/docProps/app.xml" ` +
+            `ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"` +
+          `/>` +
+
+        `</Types>`
+      );
+    }
+
+    function xlsxRootRelationships() {
+      return (
+        xlsxXmlHeader() +
+
+        `<Relationships ` +
+          `xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+
+          `<Relationship ` +
+            `Id="rId1" ` +
+            `Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" ` +
+            `Target="xl/workbook.xml"` +
+          `/>` +
+
+          `<Relationship ` +
+            `Id="rId2" ` +
+            `Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" ` +
+            `Target="docProps/core.xml"` +
+          `/>` +
+
+          `<Relationship ` +
+            `Id="rId3" ` +
+            `Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" ` +
+            `Target="docProps/app.xml"` +
+          `/>` +
+
+        `</Relationships>`
+      );
+    }
+
+    function xlsxWorkbook() {
+      return (
+        xlsxXmlHeader() +
+
+        `<workbook ` +
+          `xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ` +
+          `xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">` +
+
+          `<bookViews>` +
+            `<workbookView ` +
+              `xWindow="0" ` +
+              `yWindow="0" ` +
+              `windowWidth="24000" ` +
+              `windowHeight="12000"` +
+            `/>` +
+          `</bookViews>` +
+
+          `<sheets>` +
+            `<sheet ` +
+              `name="出貨表" ` +
+              `sheetId="1" ` +
+              `r:id="rId1"` +
+            `/>` +
+          `</sheets>` +
+
+          `<calcPr calcId="191029"/>` +
+
+        `</workbook>`
+      );
+    }
+
+    function xlsxWorkbookRelationships() {
+      return (
+        xlsxXmlHeader() +
+
+        `<Relationships ` +
+          `xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+
+          `<Relationship ` +
+            `Id="rId1" ` +
+            `Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" ` +
+            `Target="worksheets/sheet1.xml"` +
+          `/>` +
+
+          `<Relationship ` +
+            `Id="rId2" ` +
+            `Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" ` +
+            `Target="styles.xml"` +
+          `/>` +
+
+        `</Relationships>`
+      );
+    }
+
+    function xlsxAppProperties() {
+      return (
+        xlsxXmlHeader() +
+
+        `<Properties ` +
+          `xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" ` +
+          `xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">` +
+
+          `<Application>` +
+            `Microsoft Excel` +
+          `</Application>` +
+
+          `<HeadingPairs>` +
+            `<vt:vector ` +
+              `size="2" ` +
+              `baseType="variant">` +
+
+              `<vt:variant>` +
+                `<vt:lpstr>` +
+                  `工作表` +
+                `</vt:lpstr>` +
+              `</vt:variant>` +
+
+              `<vt:variant>` +
+                `<vt:i4>1</vt:i4>` +
+              `</vt:variant>` +
+
+            `</vt:vector>` +
+          `</HeadingPairs>` +
+
+          `<TitlesOfParts>` +
+            `<vt:vector ` +
+              `size="1" ` +
+              `baseType="lpstr">` +
+              `<vt:lpstr>` +
+                `出貨表` +
+              `</vt:lpstr>` +
+            `</vt:vector>` +
+          `</TitlesOfParts>` +
+
+          `<AppVersion>` +
+            `16.0300` +
+          `</AppVersion>` +
+
+        `</Properties>`
+      );
+    }
+
+    function xlsxCoreProperties(
+      now
+    ) {
+      return (
+        xlsxXmlHeader() +
+
+        `<cp:coreProperties ` +
+          `xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" ` +
+          `xmlns:dc="http://purl.org/dc/elements/1.1/" ` +
+          `xmlns:dcterms="http://purl.org/dc/terms/" ` +
+          `xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">` +
+
+          `<dc:creator>` +
+            `出貨撿貨表轉換工具` +
+          `</dc:creator>` +
+
+          `<cp:lastModifiedBy>` +
+            `出貨撿貨表轉換工具` +
+          `</cp:lastModifiedBy>` +
+
+          `<dcterms:created ` +
+            `xsi:type="dcterms:W3CDTF">` +
+            escapeXml(now) +
+          `</dcterms:created>` +
+
+          `<dcterms:modified ` +
+            `xsi:type="dcterms:W3CDTF">` +
+            escapeXml(now) +
+          `</dcterms:modified>` +
+
+        `</cp:coreProperties>`
+      );
+    }
+
+    function xlsxXmlHeader() {
+      return (
+        `<?xml version="1.0" ` +
+        `encoding="UTF-8" ` +
+        `standalone="yes"?>`
+      );
+    }
+
+    function createZip(files) {
+      const encoder =
+        new TextEncoder();
+
+      const localParts = [];
+      const centralParts = [];
+
+      let offset = 0;
+      let fileCount = 0;
+
+      for (
+        const [name, content]
+        of Object.entries(files)
+      ) {
+        const nameBytes =
+          encoder.encode(name);
+
+        const dataBytes =
+          encoder.encode(content);
+
+        const crc =
+          calculateCrc32(
+            dataBytes
+          );
+
+        const dos =
+          createDosDateTime(
+            new Date()
+          );
+
+        const local =
+          new Uint8Array(
+            30 + nameBytes.length
+          );
+
+        const localView =
+          new DataView(
+            local.buffer
+          );
+
+        localView.setUint32(
+          0,
+          0x04034b50,
+          true
+        );
+
+        localView.setUint16(
+          4,
+          20,
+          true
+        );
+
+        localView.setUint16(
+          6,
+          0x0800,
+          true
+        );
+
+        localView.setUint16(
+          8,
+          0,
+          true
+        );
+
+        localView.setUint16(
+          10,
+          dos.time,
+          true
+        );
+
+        localView.setUint16(
+          12,
+          dos.date,
+          true
+        );
+
+        localView.setUint32(
+          14,
+          crc,
+          true
+        );
+
+        localView.setUint32(
+          18,
+          dataBytes.length,
+          true
+        );
+
+        localView.setUint32(
+          22,
+          dataBytes.length,
+          true
+        );
+
+        localView.setUint16(
+          26,
+          nameBytes.length,
+          true
+        );
+
+        localView.setUint16(
+          28,
+          0,
+          true
+        );
+
+        local.set(
+          nameBytes,
+          30
+        );
+
+        const central =
+          new Uint8Array(
+            46 + nameBytes.length
+          );
+
+        const centralView =
+          new DataView(
+            central.buffer
+          );
+
+        centralView.setUint32(
+          0,
+          0x02014b50,
+          true
+        );
+
+        centralView.setUint16(
+          4,
+          20,
+          true
+        );
+
+        centralView.setUint16(
+          6,
+          20,
+          true
+        );
+
+        centralView.setUint16(
+          8,
+          0x0800,
+          true
+        );
+
+        centralView.setUint16(
+          10,
+          0,
+          true
+        );
+
+        centralView.setUint16(
+          12,
+          dos.time,
+          true
+        );
+
+        centralView.setUint16(
+          14,
+          dos.date,
+          true
+        );
+
+        centralView.setUint32(
+          16,
+          crc,
+          true
+        );
+
+        centralView.setUint32(
+          20,
+          dataBytes.length,
+          true
+        );
+
+        centralView.setUint32(
+          24,
+          dataBytes.length,
+          true
+        );
+
+        centralView.setUint16(
+          28,
+          nameBytes.length,
+          true
+        );
+
+        centralView.setUint16(
+          30,
+          0,
+          true
+        );
+
+        centralView.setUint16(
+          32,
+          0,
+          true
+        );
+
+        centralView.setUint16(
+          34,
+          0,
+          true
+        );
+
+        centralView.setUint16(
+          36,
+          0,
+          true
+        );
+
+        centralView.setUint32(
+          38,
+          0,
+          true
+        );
+
+        centralView.setUint32(
+          42,
+          offset,
+          true
+        );
+
+        central.set(
+          nameBytes,
+          46
+        );
+
+        localParts.push(
+          local,
+          dataBytes
+        );
+
+        centralParts.push(
+          central
+        );
+
+        offset +=
+          local.length +
+          dataBytes.length;
+
+        fileCount++;
+      }
+
+      const centralOffset =
+        offset;
+
+      const centralSize =
+        centralParts.reduce(
+          (sum, part) =>
+            sum + part.length,
+          0
+        );
+
+      const end =
+        new Uint8Array(22);
+
+      const endView =
+        new DataView(
+          end.buffer
+        );
+
+      endView.setUint32(
+        0,
+        0x06054b50,
+        true
+      );
+
+      endView.setUint16(
+        4,
+        0,
+        true
+      );
+
+      endView.setUint16(
+        6,
+        0,
+        true
+      );
+
+      endView.setUint16(
+        8,
+        fileCount,
+        true
+      );
+
+      endView.setUint16(
+        10,
+        fileCount,
+        true
+      );
+
+      endView.setUint32(
+        12,
+        centralSize,
+        true
+      );
+
+      endView.setUint32(
+        16,
+        centralOffset,
+        true
+      );
+
+      endView.setUint16(
+        20,
+        0,
+        true
+      );
+
+      return new Blob(
+        [
+          ...localParts,
+          ...centralParts,
+          end
+        ],
+        {
+          type:
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        }
+      );
+    }
+
+    const crcTable = (() => {
+      const table =
+        new Uint32Array(256);
+
+      for (
+        let index = 0;
+        index < 256;
+        index++
+      ) {
+        let value = index;
+
+        for (
+          let bit = 0;
+          bit < 8;
+          bit++
+        ) {
+          value =
+            value & 1
+              ? (
+                  0xedb88320 ^
+                  (value >>> 1)
+                )
+              : value >>> 1;
+        }
+
+        table[index] =
+          value >>> 0;
+      }
+
+      return table;
+    })();
+
+    function calculateCrc32(
+      bytes
+    ) {
+      let crc =
+        0xffffffff;
+
+      for (const byte of bytes) {
+        crc =
+          crcTable[
+            (crc ^ byte) & 0xff
+          ] ^
+          (crc >>> 8);
+      }
+
+      return (
+        crc ^ 0xffffffff
+      ) >>> 0;
+    }
+
+    function createDosDateTime(
+      value
+    ) {
+      const year = Math.max(
+        1980,
+        Math.min(
+          2107,
+          value.getFullYear()
+        )
+      );
+
+      return {
+        time:
+          (value.getHours() << 11) |
+          (value.getMinutes() << 5) |
+          Math.floor(
+            value.getSeconds() / 2
+          ),
+
+        date:
+          ((year - 1980) << 9) |
+          ((value.getMonth() + 1) << 5) |
+          value.getDate()
+      };
+    }
+
+    function decodeCsv(buffer) {
+      const bytes =
+        new Uint8Array(buffer);
+
+      if (
+        bytes.length >= 2 &&
+        bytes[0] === 0xff &&
+        bytes[1] === 0xfe
+      ) {
+        return new TextDecoder(
+          "utf-16le"
+        )
+          .decode(buffer)
+          .replace(/^\uFEFF/, "");
+      }
+
+      if (
+        bytes.length >= 2 &&
+        bytes[0] === 0xfe &&
+        bytes[1] === 0xff
+      ) {
+        throw new Error(
+          "目前不支援 UTF-16BE CSV"
+        );
+      }
+
+      return new TextDecoder(
+        "utf-8"
+      )
+        .decode(buffer)
+        .replace(/^\uFEFF/, "");
+    }
+
+    function parseCsv(text) {
+      const rows = [];
+
+      let row = [];
+      let field = "";
+      let quoted = false;
+
+      for (
+        let index = 0;
+        index < text.length;
+        index++
+      ) {
+        const character =
+          text[index];
+
+        if (quoted) {
+          if (
+            character === '"'
+          ) {
+            if (
+              text[index + 1] === '"'
+            ) {
+              field += '"';
+              index++;
+            } else {
+              quoted = false;
+            }
+          } else {
+            field += character;
+          }
+
+          continue;
+        }
+
+        if (
+          character === '"' &&
+          field === ""
+        ) {
+          quoted = true;
+        } else if (
+          character === ","
+        ) {
+          row.push(field);
+          field = "";
+        } else if (
+          character === "\n" ||
+          character === "\r"
+        ) {
+          if (
+            character === "\r" &&
+            text[index + 1] === "\n"
+          ) {
+            index++;
+          }
+
+          row.push(field);
+          rows.push(row);
+
+          row = [];
+          field = "";
+        } else {
+          field += character;
+        }
+      }
+
+      if (quoted) {
+        throw new Error(
+          "CSV 中有未正確關閉的引號"
+        );
+      }
+
+      if (
+        field !== "" ||
+        row.length > 0
+      ) {
+        row.push(field);
+        rows.push(row);
+      }
+
+      return rows;
+    }
+
+    function downloadBlob(
+      blob,
+      fileName
+    ) {
+      const url =
+        URL.createObjectURL(blob);
+
+      const link =
+        document.createElement("a");
+
+      link.href = url;
+      link.download = fileName;
+
+      document.body.appendChild(
+        link
+      );
+
+      link.click();
+      link.remove();
+
+      setTimeout(
+        () => {
+          URL.revokeObjectURL(
+            url
+          );
+        },
+        1500
+      );
+    }
+
+    function cleanXmlText(value) {
+      return value.replace(
+        /[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,
+        ""
+      );
+    }
+
+    function escapeXml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&apos;");
+    }
+
+    function escapeHtml(value) {
+      return String(
+        value == null
+          ? ""
+          : value
+      )
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function setMessage(
+      text,
+      type = ""
+    ) {
+      message.textContent =
+        text;
+
+      message.classList.toggle(
+        "error",
+        type === "error"
+      );
+
+      message.classList.toggle(
+        "warning",
+        type === "warning"
+      );
+    }
+
+    function resetMetrics() {
+      document.getElementById(
+        "orderCount"
+      ).textContent = "0";
+
+      document.getElementById(
+        "productCount"
+      ).textContent = "0";
+
+      document.getElementById(
+        "quantityCount"
+      ).textContent = "0";
+
+      document.getElementById(
+        "warningCount"
+      ).textContent = "0";
+    }
+  </script>
+</body>
+</html>
