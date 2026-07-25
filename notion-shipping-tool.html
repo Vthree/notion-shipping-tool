@@ -4174,35 +4174,82 @@
         .replace(/\s+/g, "")
         .replace(/[‐‑‒–—]/g, "-");
 
-      if (normalized.includes("1-5(書籍)")) {
-        return 1000;
+      const numericSeries = normalized.match(
+        /\[第(\d+(?:[+-]\d+)+)(?:集|部)(?:\+番外)?\]/
+      );
+
+      if (numericSeries) {
+        return getCourierPriceByVolumeCount(
+          countCourierVolumeExpression(
+            numericSeries[1]
+          )
+        );
       }
 
-      if (normalized.includes("1-4(書籍)")) {
-        return 800;
+      const namedSeries = normalized.match(
+        /\[((?:上|中|下)(?:\+(?:上|中|下))+)\]/
+      );
+
+      if (namedSeries) {
+        return getCourierPriceByVolumeCount(
+          new Set(
+            namedSeries[1].split("+")
+          ).size
+        );
       }
 
-      if (
-        normalized.includes("1-3(書籍)") ||
-        normalized.includes("[第1-3集]") ||
-        normalized.includes("[第1+2+3集]") ||
-        normalized.includes("[上+中+下]")
-      ) {
-        return 500;
+      const plainSeries = normalized.match(
+        /(\d+(?:[+-]\d+)+)\(書籍\)/
+      );
+
+      return getCourierPriceByVolumeCount(
+        plainSeries
+          ? countCourierVolumeExpression(
+              plainSeries[1]
+            )
+          : 1
+      );
+    }
+
+    function countCourierVolumeExpression(value) {
+      const range = String(value).match(
+        /^(\d+)-(\d+)$/
+      );
+
+      if (range) {
+        const start = Number(range[1]);
+        const end = Number(range[2]);
+
+        return Number.isSafeInteger(start) &&
+          Number.isSafeInteger(end) &&
+          start > 0 &&
+          end >= start
+          ? end - start + 1
+          : 1;
       }
 
-      if (
-        normalized.includes("1-2(書籍)") ||
-        normalized.includes("[第1+2集]") ||
-        normalized.includes("[第3+4集]") ||
-        normalized.includes("[第5+6集]") ||
-        normalized.includes("[第7+8集]") ||
-        normalized.includes("[上+下]")
-      ) {
-        return 400;
-      }
+      const volumes = String(value)
+        .split("+")
+        .map(Number)
+        .filter(volume =>
+          Number.isSafeInteger(volume) &&
+          volume > 0
+        );
 
-      return 200;
+      return volumes.length
+        ? new Set(volumes).size
+        : 1;
+    }
+
+    function getCourierPriceByVolumeCount(count) {
+      const volumeCount = Math.max(
+        1,
+        Number(count) || 1
+      );
+
+      return volumeCount === 3
+        ? 500
+        : volumeCount * 200;
     }
 
     function assignCourierSenders(orders) {
