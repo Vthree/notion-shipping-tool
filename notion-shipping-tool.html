@@ -454,6 +454,32 @@
       background: #fff8e6;
     }
 
+    .amount-warning {
+      margin: 0 28px 18px;
+      padding: 16px 18px;
+      border: 1px solid rgba(164, 56, 40, 0.28);
+      border-radius: 14px;
+      color: var(--error);
+      background: #fff0e8;
+      font-family: "Microsoft JhengHei", sans-serif;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .amount-warning[hidden] {
+      display: none;
+    }
+
+    .amount-warning strong {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 15px;
+    }
+
+    .amount-warning-list {
+      overflow-wrap: anywhere;
+    }
+
     .preview {
       overflow: auto;
       max-height: 590px;
@@ -574,6 +600,11 @@
 
       .invoice-workspace {
         padding: 18px;
+      }
+
+      .amount-warning {
+        margin-right: 18px;
+        margin-left: 18px;
       }
 
       .invoice-action-bar .privacy {
@@ -842,6 +873,12 @@
       <div id="courierMessage" class="message">
         尚未選擇人工整理後的 XLSX。
       </div>
+
+      <div
+        id="courierAmountWarning"
+        class="amount-warning"
+        hidden
+      ></div>
 
       <div
         id="courierPreview"
@@ -1332,6 +1369,11 @@
     const courierMessage =
       document.getElementById(
         "courierMessage"
+      );
+
+    const courierAmountWarning =
+      document.getElementById(
+        "courierAmountWarning"
       );
 
     const courierPreview =
@@ -2126,11 +2168,17 @@
 
         const orders =
           source.orders.map(order => {
+            const products =
+              transformCourierProducts(
+                order.products
+              );
+
             return {
               ...order,
-              products:
-                transformCourierProducts(
-                  order.products
+              products,
+              totalAmount:
+                getCourierOrderTotal(
+                  products
                 )
             };
           }).filter(
@@ -2152,12 +2200,18 @@
             0
           );
 
+        const overLimitOrders =
+          orders.filter(
+            order => order.totalAmount > 3000
+          );
+
         preparedCourier = {
           originalFileName: file.name,
           detectedMode: source.detectedMode,
           orders,
           rawProductRows,
           outputRows,
+          overLimitOrders,
           excludedCount:
             Math.max(
               0,
@@ -2185,6 +2239,7 @@
             .toLocaleString();
 
         updateCourierModeDisplay();
+        renderCourierAmountWarning();
         renderCourierPreview();
 
         courierDownloadBtn.disabled = false;
@@ -3848,6 +3903,16 @@
       }));
     }
 
+    function getCourierOrderTotal(products) {
+      return products.reduce(
+        (total, product) =>
+          total +
+          Number(product.quantity || 0) *
+          Number(product.price || 0),
+        0
+      );
+    }
+
     function shouldExcludeCourierProduct(
       value
     ) {
@@ -4104,63 +4169,40 @@
     }
 
     function getCourierDeclaredPrice(name) {
-      let volumeCount = 1;
+      const normalized = String(name || "")
+        .normalize("NFKC")
+        .replace(/\s+/g, "")
+        .replace(/[‐‑‒–—]/g, "-");
 
-      const series =
-        parseCourierSeriesName(name);
+      if (normalized.includes("1-5(書籍)")) {
+        return 1000;
+      }
 
-      if (series) {
-        volumeCount =
-          new Set(series.volumes).size;
-      } else if (
-        /^\[(?:上|中|下)(?:[+＋](?:上|中|下))+\]/.test(
-          name
-        )
+      if (normalized.includes("1-4(書籍)")) {
+        return 800;
+      }
+
+      if (
+        normalized.includes("1-3(書籍)") ||
+        normalized.includes("[第1-3集]") ||
+        normalized.includes("[第1+2+3集]") ||
+        normalized.includes("[上+中+下]")
       ) {
-        volumeCount =
-          name.match(
-            /^\[([^\]]+)\]/
-          )[1].split(/[+＋]/).length;
+        return 500;
       }
 
-      const plainRange = name.match(
-        /(\d+)\s*[-－–—至到]\s*(\d+)\s*[（(]書籍[)）]/
-      );
-
-      if (plainRange) {
-        const start = Number(plainRange[1]);
-        const end = Number(plainRange[2]);
-
-        if (
-          start > 0 &&
-          end >= start &&
-          end - start < 100
-        ) {
-          volumeCount = Math.max(
-            volumeCount,
-            end - start + 1
-          );
-        }
+      if (
+        normalized.includes("1-2(書籍)") ||
+        normalized.includes("[第1+2集]") ||
+        normalized.includes("[第3+4集]") ||
+        normalized.includes("[第5+6集]") ||
+        normalized.includes("[第7+8集]") ||
+        normalized.includes("[上+下]")
+      ) {
+        return 400;
       }
 
-      const overrides = new Map([
-        [
-          "全世界都在等我們分手1-3(書籍)",
-          400
-        ],
-        [
-          "[第3-6集]PASSION(書籍)",
-          500
-        ]
-      ]);
-
-      if (overrides.has(name)) {
-        return overrides.get(name);
-      }
-
-      return volumeCount === 3
-        ? 500
-        : volumeCount * 200;
+      return 200;
     }
 
     function assignCourierSenders(orders) {
@@ -4386,6 +4428,35 @@
         `</table>`;
     }
 
+    function renderCourierAmountWarning() {
+      const overLimitOrders =
+        preparedCourier
+          ? preparedCourier.overLimitOrders || []
+          : [];
+
+      if (!overLimitOrders.length) {
+        courierAmountWarning.hidden = true;
+        courierAmountWarning.innerHTML = "";
+        return;
+      }
+
+      courierAmountWarning.hidden = false;
+      courierAmountWarning.innerHTML =
+        `<strong>` +
+          `注意：有 ${overLimitOrders.length} 筆` +
+          `客戶訂單的商品總金額超過 3,000 元` +
+        `</strong>` +
+        `<div class="amount-warning-list">` +
+          overLimitOrders.map(order =>
+            `客戶訂單號 ` +
+            `${escapeHtml(order.shippingNumber)}` +
+            `｜收件人 ` +
+            `${escapeHtml(order.recipient || "未填寫")}` +
+            `（${order.totalAmount.toLocaleString()} 元）`
+          ).join("、") +
+        `</div>`;
+    }
+
     function resetCourierMetrics() {
       [
         "courierOrderCount",
@@ -4400,6 +4471,9 @@
       document.getElementById(
         "courierDetectedMode"
       ).textContent = "—";
+
+      courierAmountWarning.hidden = true;
+      courierAmountWarning.innerHTML = "";
     }
 
     function setCourierMessage(
