@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <title>出貨撿貨表轉換工具</title>
+  <title>出貨單轉換工具</title>
 
   <style>
     :root {
@@ -115,6 +115,143 @@
       background: var(--card);
       box-shadow: var(--shadow);
       backdrop-filter: blur(12px);
+    }
+
+    .feature-switch {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
+      padding: 7px;
+      border: 1px solid rgba(36, 92, 77, 0.18);
+      border-radius: 18px;
+      background: rgba(255, 253, 248, 0.82);
+      box-shadow: 0 12px 36px rgba(43, 50, 39, 0.08);
+    }
+
+    .feature-tab {
+      min-height: 48px;
+      border-radius: 12px;
+      color: var(--green-dark);
+      background: transparent;
+    }
+
+    .feature-tab:hover:not(:disabled) {
+      color: #fff;
+    }
+
+    .feature-tab.active {
+      color: #fff;
+      background: var(--green);
+    }
+
+    .feature-panel[hidden] {
+      display: none;
+    }
+
+    .courier-note {
+      padding: 16px 28px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      background: rgba(36, 92, 77, 0.045);
+      font-family: "Microsoft JhengHei", sans-serif;
+      font-size: 13px;
+      line-height: 1.8;
+    }
+
+    .courier-mode {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .courier-mode .mode-option {
+      grid-template-columns: 18px minmax(0, 1fr);
+      min-height: 44px;
+      padding: 8px 10px;
+    }
+
+    .courier-preview table {
+      min-width: 1840px;
+    }
+
+    .courier-preview td.sender-cell {
+      background: #f7efe1;
+    }
+
+    .courier-preview td.order-cell {
+      background: var(--gray-cell);
+      text-align: center;
+    }
+
+    .invoice-workspace {
+      padding: 28px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .invoice-file-grid,
+    .invoice-settings {
+      display: grid;
+      gap: 16px;
+    }
+
+    .invoice-file-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .invoice-drop {
+      min-height: 158px;
+    }
+
+    .invoice-settings {
+      grid-template-columns: 2fr 1fr 0.8fr 1.15fr;
+      margin-top: 18px;
+    }
+
+    .invoice-field {
+      display: grid;
+      gap: 7px;
+      color: var(--green-dark);
+      font-family: "Microsoft JhengHei", sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .invoice-field input {
+      width: 100%;
+      min-height: 46px;
+      padding: 0 13px;
+      border: 1px solid #b8c6b9;
+      border-radius: 11px;
+      color: var(--ink);
+      background: #fffdf8;
+      outline: none;
+    }
+
+    .invoice-field input:focus {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 3px rgba(223, 100, 45, 0.12);
+    }
+
+    .invoice-action-bar {
+      display: grid;
+      grid-template-columns: minmax(250px, 360px) minmax(0, 1fr);
+      align-items: center;
+      gap: 20px;
+      margin-top: 18px;
+    }
+
+    .invoice-action-bar .privacy {
+      text-align: left;
+    }
+
+    .invoice-preview table {
+      min-width: 1120px;
+    }
+
+    .invoice-preview td.over-limit {
+      color: var(--error);
+      background: #fff0e8;
     }
 
     .controls {
@@ -427,6 +564,22 @@
         padding: 18px;
       }
 
+      .feature-switch,
+      .courier-mode,
+      .invoice-file-grid,
+      .invoice-settings,
+      .invoice-action-bar {
+        grid-template-columns: 1fr;
+      }
+
+      .invoice-workspace {
+        padding: 18px;
+      }
+
+      .invoice-action-bar .privacy {
+        text-align: center;
+      }
+
       .metrics {
         grid-template-columns: 1fr 1fr;
       }
@@ -446,14 +599,40 @@
   <main class="shell">
     <header>
       <div>
-        <p class="eyebrow">NOTION CSV → XLSX</p>
-        <h1>出貨撿貨表<br>轉換工具</h1>
+        <p class="eyebrow">CSV / XLSX → SHIPPING DOCUMENTS</p>
+        <h1>出貨單<br>轉換工具</h1>
       </div>
 
       <div class="stamp">本機<br>處理</div>
     </header>
 
-    <section class="panel">
+    <nav class="feature-switch" aria-label="工具功能">
+      <button
+        class="feature-tab active"
+        type="button"
+        data-feature="picking"
+      >
+        Notion CSV 轉出貨撿貨表
+      </button>
+
+      <button
+        class="feature-tab"
+        type="button"
+        data-feature="courier"
+      >
+        出貨單轉成順豐下單表
+      </button>
+
+      <button
+        class="feature-tab"
+        type="button"
+        data-feature="invoice"
+      >
+        清關發票對應生產器
+      </button>
+    </nav>
+
+    <section id="pickingPanel" class="panel feature-panel">
       <div class="controls">
         <label id="dropZone" class="drop-zone">
           <input
@@ -544,13 +723,285 @@
 
       <div id="preview" class="preview">
         <div class="empty">
-          選擇 CSV 後，這裡會顯示前 40 個商品格。
+          選擇 CSV 後，這裡會顯示全部商品列。
+        </div>
+      </div>
+    </section>
+
+    <section
+      id="courierPanel"
+      class="panel feature-panel"
+      hidden
+    >
+      <div class="courier-note">
+        請先在原本的出貨撿貨表完成必要的人工整理，再將 XLSX 匯入此處。
+        系統會依出貨編號綁定收件資料，保留順豐模板第 1、2 列及原始樣式，
+        並從第 3 列開始填寫。
+      </div>
+
+      <div class="controls">
+        <label id="courierDropZone" class="drop-zone">
+          <input
+            id="courierFileInput"
+            type="file"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          >
+
+          <strong id="courierFileTitle">
+            選擇或拖入人工整理後的 XLSX
+          </strong>
+
+          <span>
+            支援人工整理後的到付或寄付出貨表。<br>
+            同時有「撿貨員」與「打包員」欄位判斷為寄付，否則為到付。<br>
+            手機號碼會以文字寫入，不會出現 .0 或遺失前導 0。
+          </span>
+        </label>
+
+        <div class="actions">
+          <div class="mode-title">
+            下單表付款方式
+          </div>
+
+          <div class="courier-mode">
+            <label class="mode-option">
+              <input
+                type="radio"
+                name="courierMode"
+                value="auto"
+                checked
+              >
+              <span class="mode-copy">
+                <strong>自動</strong>
+                <small>依欄位判斷</small>
+              </span>
+            </label>
+
+            <label class="mode-option">
+              <input
+                type="radio"
+                name="courierMode"
+                value="collect"
+              >
+              <span class="mode-copy">
+                <strong>到付</strong>
+                <small>可人工覆寫</small>
+              </span>
+            </label>
+
+            <label class="mode-option">
+              <input
+                type="radio"
+                name="courierMode"
+                value="prepaid"
+              >
+              <span class="mode-copy">
+                <strong>寄付</strong>
+                <small>可人工覆寫</small>
+              </span>
+            </label>
+          </div>
+
+          <button
+            id="courierDownloadBtn"
+            type="button"
+            disabled
+          >
+            下載順豐下單表
+          </button>
+
+          <div class="privacy">
+            XLSX 只在瀏覽器內處理<br>
+            不會上傳至網路
+          </div>
+        </div>
+      </div>
+
+      <div class="metrics">
+        <div class="metric">
+          <b id="courierOrderCount">0</b>
+          <span>有效出貨編號</span>
+        </div>
+
+        <div class="metric">
+          <b id="courierRowCount">0</b>
+          <span>下單表商品列</span>
+        </div>
+
+        <div class="metric">
+          <b id="courierExcludedCount">0</b>
+          <span>未輸出商品列</span>
+        </div>
+
+        <div class="metric">
+          <b id="courierDetectedMode">—</b>
+          <span>目前付款方式</span>
+        </div>
+      </div>
+
+      <div id="courierMessage" class="message">
+        尚未選擇人工整理後的 XLSX。
+      </div>
+
+      <div
+        id="courierPreview"
+        class="preview courier-preview"
+      >
+        <div class="empty">
+          選擇 XLSX 後，這裡會顯示全部下單表商品列。
+        </div>
+      </div>
+    </section>
+
+    <section
+      id="invoicePanel"
+      class="panel feature-panel"
+      hidden
+    >
+      <div class="courier-note">
+        同時匯入順豐下單表（orders）及順豐運單對照表（sf），
+        系統會依「客戶訂單號」配對運單，為每筆訂單產生一張電子發票明細 JPG，
+        最後打包成 ZIP。全程在瀏覽器本機完成，Windows 與 macOS 都可使用。
+      </div>
+
+      <div class="invoice-workspace">
+        <div class="invoice-file-grid">
+          <label
+            id="invoiceOrdersDropZone"
+            class="drop-zone invoice-drop"
+          >
+            <input
+              id="invoiceOrdersFileInput"
+              type="file"
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            >
+
+            <strong id="invoiceOrdersFileTitle">
+              ① 選擇順豐下單表 orders.xlsx
+            </strong>
+
+            <span>
+              需包含客戶訂單號、商品、數量、單價及完整收件資料。<br>
+              可直接點擊選檔或把 XLSX 拖入此區。
+            </span>
+          </label>
+
+          <label
+            id="invoiceSfDropZone"
+            class="drop-zone invoice-drop"
+          >
+            <input
+              id="invoiceSfFileInput"
+              type="file"
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            >
+
+            <strong id="invoiceSfFileTitle">
+              ② 選擇順豐運單對照表 sf.xlsx
+            </strong>
+
+            <span>
+              需包含客戶訂單號及順豐運單號。<br>
+              系統會用運單號作為每張 JPG 的檔名。
+            </span>
+          </label>
+        </div>
+
+        <div class="invoice-settings">
+          <label class="invoice-field">
+            營業人名稱
+            <input
+              id="invoiceSellerName"
+              type="text"
+              maxlength="100"
+              value="一豆文化有限公司"
+            >
+          </label>
+
+          <label class="invoice-field">
+            營業人統編
+            <input
+              id="invoiceSellerId"
+              type="text"
+              inputmode="numeric"
+              maxlength="20"
+              value="90377625"
+            >
+          </label>
+
+          <label class="invoice-field">
+            發票字首
+            <input
+              id="invoicePrefix"
+              type="text"
+              maxlength="12"
+              value="ZL"
+            >
+          </label>
+
+          <label class="invoice-field">
+            發票日期
+            <input
+              id="invoiceDate"
+              type="date"
+            >
+          </label>
+        </div>
+
+        <div class="invoice-action-bar">
+          <button
+            id="invoiceDownloadBtn"
+            type="button"
+            disabled
+          >
+            下載清關發票 JPG（ZIP）
+          </button>
+
+          <div class="privacy">
+            發票號碼會從隨機 8 位數起號並依訂單連號。<br>
+            訂單總額超過 3,000 元或找不到運單號時會在下方標示。
+          </div>
+        </div>
+      </div>
+
+      <div class="metrics">
+        <div class="metric">
+          <b id="invoiceOrderCount">0</b>
+          <span>清關訂單</span>
+        </div>
+
+        <div class="metric">
+          <b id="invoiceMatchedCount">0</b>
+          <span>已對應順豐運單</span>
+        </div>
+
+        <div class="metric">
+          <b id="invoiceOverLimitCount">0</b>
+          <span>總額超過 3,000</span>
+        </div>
+
+        <div class="metric">
+          <b id="invoiceMissingCount">0</b>
+          <span>未對應運單</span>
+        </div>
+      </div>
+
+      <div id="invoiceMessage" class="message">
+        請依序選擇 orders.xlsx 與 sf.xlsx。
+      </div>
+
+      <div
+        id="invoicePreview"
+        class="preview invoice-preview"
+      >
+        <div class="empty">
+          兩份 XLSX 都讀取完成後，這裡會顯示全部發票對應結果。
         </div>
       </div>
     </section>
 
     <footer>
-      輸出為標準 XLSX；下載檔名沿用上傳的 CSV 原始檔名。
+      所有轉換均在本機完成；可輸出標準 XLSX 或清關發票 JPG ZIP。
     </footer>
   </main>
 
@@ -767,6 +1218,524 @@
       );
 
     let prepared = null;
+
+    const COURIER_TEMPLATE_BASE64 = {
+      collect:
+        "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",
+      prepaid:
+        "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"
+    };
+
+    const COURIER_SENDER_NAMES = `
+王冠廷 王雅婷 王俊傑 王怡君 王志豪 王佳穎 李承恩 李佳蓉 李柏翰 李欣怡
+李俊宏 李宜庭 陳冠宇 陳怡婷 陳柏宇 陳佩琪 陳志明 陳佳慧 林冠廷 林佳穎
+林俊傑 林雅雯 林承翰 林怡君 張家豪 張雅婷 張柏宇 張欣妤 張志豪 張佳蓉
+劉俊宏 劉佩珊 劉柏翰 劉怡婷 劉承恩 劉雅雯 黃冠宇 黃佳慧 黃俊傑 黃欣怡
+黃志明 黃宜庭 吳承翰 吳佳蓉 吳俊宏 吳雅婷 吳柏宇 吳佩琪 趙志豪 趙怡君
+趙承恩 趙雅雯 趙柏翰 趙佳穎 周俊傑 周佩珊 周冠廷 周欣妤 周家豪 周佳慧
+徐承宇 徐雅婷 徐俊宏 徐怡婷 徐柏宇 徐佳蓉 孫志明 孫佩琪 孫冠宇 孫欣怡
+孫承翰 孫宜庭 馬俊傑 馬佳穎 馬志豪 馬雅雯 馬柏翰 馬怡君 朱承恩 朱佩珊
+朱俊宏 朱佳慧 朱家豪 朱欣妤 胡冠廷 胡雅婷 胡柏宇 胡怡婷 胡承宇 胡佳蓉
+郭俊傑 郭佩琪 郭志明 郭欣怡 郭冠宇 郭宜庭 何承翰 何佳穎 何柏翰 何雅雯
+高俊宏 高佩珊 高家豪 高怡君 高冠廷 高佳慧 羅志豪 羅欣妤 羅承恩 羅雅婷
+羅柏宇 羅佩琪 鄭俊傑 鄭佳蓉 鄭冠宇 鄭怡婷 鄭志明 鄭雅雯 梁承翰 梁佳穎
+梁柏翰 梁欣怡 梁俊宏 梁宜庭 謝冠廷 謝雅婷 謝志豪 謝佩珊 謝家豪 謝佳慧
+宋俊傑 宋怡君 宋柏宇 宋欣妤 宋承恩 宋佳蓉 唐冠宇 唐雅雯 唐俊宏 唐佩琪
+唐柏翰 唐怡婷 蔡承宇 蔡佳穎 蔡志明 蔡欣怡 蔡冠廷 蔡宜庭 彭俊傑 彭雅婷
+彭家豪 彭佳慧 彭柏宇 彭佩珊 蘇承翰 蘇怡君 蘇俊宏 蘇雅雯 蘇冠宇 蘇欣妤
+沈志豪 沈佳蓉 沈柏翰 沈佩琪 沈承恩 沈怡婷 葉冠廷 葉雅婷 葉俊傑 葉佳穎
+葉志明 葉宜庭 呂承宇 呂佩珊 呂柏宇 呂欣怡 呂俊宏 呂佳慧 方冠宇 方雅雯
+方家豪 方怡君 方承翰 方佳蓉 曹俊傑 曹佩琪 曹志豪 曹欣妤 曹柏翰 曹雅婷
+戴冠廷 戴佳穎 戴俊宏 戴怡婷 戴承恩 戴佩珊 鍾柏宇 鍾佳慧 鍾雅雯 鍾家豪
+    `.trim().split(/\s+/);
+
+    const COURIER_SENDER_PHONES = [
+      "0919544013",
+      "0972255350",
+      "0933036768"
+    ];
+
+    const COURIER_DATA_STYLE_IDS = {
+      A: 23,
+      B: 24,
+      D: 24,
+      S: 19,
+      T: 69,
+      U: 65,
+      V: 35,
+      W: 36,
+      X: 34,
+      Z: 42,
+      AA: 39,
+      BK: 41
+    };
+
+    const COURIER_STREETS = [
+      "農安街",
+      "德惠街",
+      "民權東路二段",
+      "民生東路二段",
+      "南京東路二段",
+      "長春路",
+      "吉林路",
+      "松江路",
+      "錦州街",
+      "合江街",
+      "龍江路",
+      "遼寧街",
+      "雙城街",
+      "天祥路",
+      "中原街",
+      "新生北路二段"
+    ];
+
+    const featureTabs =
+      document.querySelectorAll(
+        ".feature-tab"
+      );
+
+    const pickingPanel =
+      document.getElementById(
+        "pickingPanel"
+      );
+
+    const courierPanel =
+      document.getElementById(
+        "courierPanel"
+      );
+
+    const invoicePanel =
+      document.getElementById(
+        "invoicePanel"
+      );
+
+    const courierFileInput =
+      document.getElementById(
+        "courierFileInput"
+      );
+
+    const courierDropZone =
+      document.getElementById(
+        "courierDropZone"
+      );
+
+    const courierDownloadBtn =
+      document.getElementById(
+        "courierDownloadBtn"
+      );
+
+    const courierFileTitle =
+      document.getElementById(
+        "courierFileTitle"
+      );
+
+    const courierMessage =
+      document.getElementById(
+        "courierMessage"
+      );
+
+    const courierPreview =
+      document.getElementById(
+        "courierPreview"
+      );
+
+    const courierModeInputs =
+      document.querySelectorAll(
+        'input[name="courierMode"]'
+      );
+
+    const invoiceOrdersFileInput =
+      document.getElementById(
+        "invoiceOrdersFileInput"
+      );
+
+    const invoiceSfFileInput =
+      document.getElementById(
+        "invoiceSfFileInput"
+      );
+
+    const invoiceOrdersDropZone =
+      document.getElementById(
+        "invoiceOrdersDropZone"
+      );
+
+    const invoiceSfDropZone =
+      document.getElementById(
+        "invoiceSfDropZone"
+      );
+
+    const invoiceDownloadBtn =
+      document.getElementById(
+        "invoiceDownloadBtn"
+      );
+
+    const invoiceMessage =
+      document.getElementById(
+        "invoiceMessage"
+      );
+
+    const invoicePreview =
+      document.getElementById(
+        "invoicePreview"
+      );
+
+    const invoiceSellerName =
+      document.getElementById(
+        "invoiceSellerName"
+      );
+
+    const invoiceSellerId =
+      document.getElementById(
+        "invoiceSellerId"
+      );
+
+    const invoicePrefix =
+      document.getElementById(
+        "invoicePrefix"
+      );
+
+    const invoiceDate =
+      document.getElementById(
+        "invoiceDate"
+      );
+
+    const invoiceSettingInputs = [
+      invoiceSellerName,
+      invoiceSellerId,
+      invoicePrefix,
+      invoiceDate
+    ];
+
+    let preparedCourier = null;
+    let invoiceOrdersFile = null;
+    let invoiceSfFile = null;
+    let preparedInvoices = null;
+    let invoiceLoadToken = 0;
+
+    invoiceDate.value =
+      getLocalIsoDate(new Date());
+
+    featureTabs.forEach(tab => {
+      tab.addEventListener(
+        "click",
+        () => {
+          const feature =
+            tab.dataset.feature;
+
+          featureTabs.forEach(item => {
+            item.classList.toggle(
+              "active",
+              item === tab
+            );
+          });
+
+          pickingPanel.hidden =
+            feature !== "picking";
+
+          courierPanel.hidden =
+            feature !== "courier";
+
+          invoicePanel.hidden =
+            feature !== "invoice";
+        }
+      );
+    });
+
+    courierFileInput.addEventListener(
+      "change",
+      event => {
+        const file =
+          event.target.files[0];
+
+        if (file) {
+          loadCourierFile(file);
+        }
+      }
+    );
+
+    courierModeInputs.forEach(input => {
+      input.addEventListener(
+        "change",
+        () => {
+          if (!preparedCourier) {
+            return;
+          }
+
+          updateCourierModeDisplay();
+          renderCourierPreview();
+
+          setCourierMessage(
+            `目前下單表付款方式：` +
+            getCourierModeLabel(
+              getEffectiveCourierMode()
+            ) +
+            `。`
+          );
+        }
+      );
+    });
+
+    [
+      "dragenter",
+      "dragover"
+    ].forEach(type => {
+      courierDropZone.addEventListener(
+        type,
+        event => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          courierDropZone.classList.add(
+            "dragging"
+          );
+        }
+      );
+    });
+
+    [
+      "dragleave",
+      "drop"
+    ].forEach(type => {
+      courierDropZone.addEventListener(
+        type,
+        event => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          courierDropZone.classList.remove(
+            "dragging"
+          );
+        }
+      );
+    });
+
+    courierDropZone.addEventListener(
+      "drop",
+      event => {
+        const file =
+          event.dataTransfer.files[0];
+
+        if (file) {
+          loadCourierFile(file);
+        }
+      }
+    );
+
+    courierDownloadBtn.addEventListener(
+      "click",
+      async () => {
+        if (!preparedCourier) {
+          return;
+        }
+
+        courierDownloadBtn.disabled = true;
+
+        try {
+          const mode =
+            getEffectiveCourierMode();
+
+          setCourierMessage(
+            `正在產生順豐` +
+            `${getCourierModeLabel(mode)}` +
+            `下單表……`
+          );
+
+          const blob =
+            await createCourierXlsx(
+              preparedCourier,
+              mode
+            );
+
+          const outputFileName =
+            getCourierOutputFileName(
+              preparedCourier
+            );
+
+          downloadBlob(
+            blob,
+            outputFileName
+          );
+
+          setCourierMessage(
+            `順豐下單表已產生：` +
+            outputFileName
+          );
+        } catch (error) {
+          console.error(error);
+
+          setCourierMessage(
+            `產生順豐下單表失敗：` +
+            error.message,
+            "error"
+          );
+        } finally {
+          courierDownloadBtn.disabled =
+            !preparedCourier;
+        }
+      }
+    );
+
+    invoiceOrdersFileInput.addEventListener(
+      "change",
+      event => {
+        const file = event.target.files[0];
+
+        if (file) {
+          invoiceOrdersFile = file;
+          document.getElementById(
+            "invoiceOrdersFileTitle"
+          ).textContent = file.name;
+          prepareInvoiceFiles();
+        }
+      }
+    );
+
+    invoiceSfFileInput.addEventListener(
+      "change",
+      event => {
+        const file = event.target.files[0];
+
+        if (file) {
+          invoiceSfFile = file;
+          document.getElementById(
+            "invoiceSfFileTitle"
+          ).textContent = file.name;
+          prepareInvoiceFiles();
+        }
+      }
+    );
+
+    bindInvoiceDropZone(
+      invoiceOrdersDropZone,
+      file => {
+        invoiceOrdersFile = file;
+        document.getElementById(
+          "invoiceOrdersFileTitle"
+        ).textContent = file.name;
+        prepareInvoiceFiles();
+      }
+    );
+
+    bindInvoiceDropZone(
+      invoiceSfDropZone,
+      file => {
+        invoiceSfFile = file;
+        document.getElementById(
+          "invoiceSfFileTitle"
+        ).textContent = file.name;
+        prepareInvoiceFiles();
+      }
+    );
+
+    invoiceSettingInputs.forEach(input => {
+      input.addEventListener(
+        "input",
+        () => {
+          updateInvoiceDownloadState();
+
+          if (preparedInvoices) {
+            renderInvoicePreview();
+          }
+        }
+      );
+    });
+
+    invoiceDownloadBtn.addEventListener(
+      "click",
+      async () => {
+        if (!preparedInvoices) {
+          return;
+        }
+
+        invoiceDownloadBtn.disabled = true;
+
+        try {
+          const settings =
+            getInvoiceSettings();
+
+          const files = {};
+          const usedNames = new Set();
+          const total =
+            preparedInvoices.invoices.length;
+
+          for (
+            let index = 0;
+            index < total;
+            index++
+          ) {
+            const invoice =
+              preparedInvoices.invoices[index];
+
+            setInvoiceMessage(
+              `正在產生第 ${index + 1} / ` +
+              `${total} 張清關發票……`
+            );
+
+            const invoiceNumber =
+              getInvoiceNumber(
+                preparedInvoices.startNumber,
+                index,
+                settings.prefix
+              );
+
+            const imageBlob =
+              await createInvoiceJpeg(
+                invoice,
+                invoiceNumber,
+                settings
+              );
+
+            const imageName =
+              getUniqueInvoiceImageName(
+                invoice.sfNumber,
+                usedNames
+              );
+
+            files[
+              `output_jpg/${imageName}`
+            ] = new Uint8Array(
+              await imageBlob.arrayBuffer()
+            );
+
+            if ((index + 1) % 4 === 0) {
+              await yieldToBrowser();
+            }
+          }
+
+          const outputName =
+            getInvoiceZipFileName(settings.date);
+
+          downloadBlob(
+            createZip(
+              files,
+              "application/zip"
+            ),
+            outputName
+          );
+
+          const warningText =
+            preparedInvoices.overLimitCount
+              ? `；另有 ${preparedInvoices.overLimitCount} ` +
+                `筆總額超過 3,000 元`
+              : "";
+
+          setInvoiceMessage(
+            `已產生 ${total} 張清關發票：` +
+            `${outputName}${warningText}`,
+            warningText ? "warning" : ""
+          );
+        } catch (error) {
+          console.error(error);
+
+          setInvoiceMessage(
+            `產生清關發票失敗：${error.message}`,
+            "error"
+          );
+        } finally {
+          updateInvoiceDownloadState();
+        }
+      }
+    );
 
     fileInput.addEventListener(
       "change",
@@ -1079,6 +2048,2995 @@
           </div>
         `;
       }
+    }
+
+    async function loadCourierFile(file) {
+      preparedCourier = null;
+      courierDownloadBtn.disabled = true;
+      resetCourierMetrics();
+
+      if (!/\.xlsx$/i.test(file.name)) {
+        setCourierMessage(
+          "請選擇副檔名為 .xlsx 的檔案。",
+          "error"
+        );
+
+        return;
+      }
+
+      try {
+        setCourierMessage(
+          "正在讀取人工整理後的出貨單……"
+        );
+
+        const entries =
+          await readZipEntries(
+            await file.arrayBuffer()
+          );
+
+        const source =
+          readCourierSourceWorkbook(
+            entries,
+            file.name
+          );
+
+        if (
+          source.orders.length >
+          COURIER_SENDER_NAMES.length
+        ) {
+          throw new Error(
+            `共有 ${source.orders.length} 筆出貨編號，` +
+            `但不重複寄件人姓名只有 ` +
+            `${COURIER_SENDER_NAMES.length} 組`
+          );
+        }
+
+        const invalidOrders =
+          source.orders.filter(order => {
+            return (
+              !order.shippingNumber ||
+              !order.recipient ||
+              !order.phone ||
+              !order.address
+            );
+          });
+
+        if (invalidOrders.length) {
+          const examples =
+            invalidOrders
+              .slice(0, 5)
+              .map(order =>
+                order.shippingNumber ||
+                "無出貨編號"
+              )
+              .join("、");
+
+          throw new Error(
+            `有 ${invalidOrders.length} 筆訂單缺少` +
+            `收件人、電話或地址：${examples}`
+          );
+        }
+
+        const rawProductRows =
+          source.orders.reduce(
+            (total, order) =>
+              total + order.products.length,
+            0
+          );
+
+        const orders =
+          source.orders.map(order => {
+            return {
+              ...order,
+              products:
+                transformCourierProducts(
+                  order.products
+                )
+            };
+          }).filter(
+            order => order.products.length
+          );
+
+        if (!orders.length) {
+          throw new Error(
+            "沒有可填入下單表的商品資料"
+          );
+        }
+
+        assignCourierSenders(orders);
+
+        const outputRows =
+          orders.reduce(
+            (total, order) =>
+              total + order.products.length,
+            0
+          );
+
+        preparedCourier = {
+          originalFileName: file.name,
+          detectedMode: source.detectedMode,
+          orders,
+          rawProductRows,
+          outputRows,
+          excludedCount:
+            Math.max(
+              0,
+              rawProductRows - outputRows
+            )
+        };
+
+        courierFileTitle.textContent =
+          file.name;
+
+        document.getElementById(
+          "courierOrderCount"
+        ).textContent =
+          orders.length.toLocaleString();
+
+        document.getElementById(
+          "courierRowCount"
+        ).textContent =
+          outputRows.toLocaleString();
+
+        document.getElementById(
+          "courierExcludedCount"
+        ).textContent =
+          preparedCourier.excludedCount
+            .toLocaleString();
+
+        updateCourierModeDisplay();
+        renderCourierPreview();
+
+        courierDownloadBtn.disabled = false;
+
+        setCourierMessage(
+          `讀取完成：${orders.length} 筆出貨編號、` +
+          `${outputRows} 個下單商品列；` +
+          `自動判斷為順豐` +
+          getCourierModeLabel(
+            source.detectedMode
+          ) +
+          `。`
+        );
+      } catch (error) {
+        console.error(error);
+
+        preparedCourier = null;
+        courierDownloadBtn.disabled = true;
+
+        setCourierMessage(
+          `無法處理 XLSX：${error.message}`,
+          "error"
+        );
+
+        courierPreview.innerHTML = `
+          <div class="empty">
+            請確認檔案是人工整理後的出貨撿貨表，
+            並包含出貨編號、收件人、商品資訊、數量、電話及地址。
+          </div>
+        `;
+      }
+    }
+
+    function bindInvoiceDropZone(
+      zone,
+      onFile
+    ) {
+      [
+        "dragenter",
+        "dragover"
+      ].forEach(type => {
+        zone.addEventListener(
+          type,
+          event => {
+            event.preventDefault();
+            event.stopPropagation();
+            zone.classList.add("dragging");
+          }
+        );
+      });
+
+      [
+        "dragleave",
+        "drop"
+      ].forEach(type => {
+        zone.addEventListener(
+          type,
+          event => {
+            event.preventDefault();
+            event.stopPropagation();
+            zone.classList.remove("dragging");
+          }
+        );
+      });
+
+      zone.addEventListener(
+        "drop",
+        event => {
+          const file =
+            event.dataTransfer.files[0];
+
+          if (file) {
+            onFile(file);
+          }
+        }
+      );
+    }
+
+    async function prepareInvoiceFiles() {
+      const token = ++invoiceLoadToken;
+
+      preparedInvoices = null;
+      invoiceDownloadBtn.disabled = true;
+      resetInvoiceMetrics();
+
+      if (!invoiceOrdersFile || !invoiceSfFile) {
+        setInvoiceMessage(
+          invoiceOrdersFile
+            ? "已選擇 orders，請再選擇 sf.xlsx。"
+            : (
+                invoiceSfFile
+                  ? "已選擇 sf，請再選擇 orders.xlsx。"
+                  : "請依序選擇 orders.xlsx 與 sf.xlsx。"
+              )
+        );
+        return;
+      }
+
+      if (
+        !/\.xlsx$/i.test(invoiceOrdersFile.name) ||
+        !/\.xlsx$/i.test(invoiceSfFile.name)
+      ) {
+        setInvoiceMessage(
+          "orders 與 sf 都必須是 .xlsx 檔案。",
+          "error"
+        );
+        return;
+      }
+
+      try {
+        setInvoiceMessage(
+          "正在讀取並依客戶訂單號配對兩份 XLSX……"
+        );
+
+        const [ordersEntries, sfEntries] =
+          await Promise.all([
+            invoiceOrdersFile
+              .arrayBuffer()
+              .then(readZipEntries),
+            invoiceSfFile
+              .arrayBuffer()
+              .then(readZipEntries)
+          ]);
+
+        if (token !== invoiceLoadToken) {
+          return;
+        }
+
+        const orders =
+          readInvoiceOrdersWorkbook(
+            ordersEntries
+          );
+
+        const sfMap =
+          readInvoiceSfWorkbook(
+            sfEntries
+          );
+
+        const invoices =
+          buildInvoiceData(
+            orders,
+            sfMap
+          );
+
+        const matchedCount =
+          invoices.filter(
+            invoice => invoice.matched
+          ).length;
+
+        const overLimitCount =
+          invoices.filter(
+            invoice => invoice.total > 3000
+          ).length;
+
+        const maximumStart = Math.max(
+          10000000,
+          99999999 - invoices.length + 1
+        );
+
+        preparedInvoices = {
+          invoices,
+          matchedCount,
+          missingCount:
+            invoices.length - matchedCount,
+          overLimitCount,
+          startNumber:
+            10000000 + Math.floor(
+              Math.random() *
+              (maximumStart - 10000000 + 1)
+            )
+        };
+
+        document.getElementById(
+          "invoiceOrderCount"
+        ).textContent =
+          invoices.length.toLocaleString();
+
+        document.getElementById(
+          "invoiceMatchedCount"
+        ).textContent =
+          matchedCount.toLocaleString();
+
+        document.getElementById(
+          "invoiceOverLimitCount"
+        ).textContent =
+          overLimitCount.toLocaleString();
+
+        document.getElementById(
+          "invoiceMissingCount"
+        ).textContent =
+          preparedInvoices.missingCount
+            .toLocaleString();
+
+        renderInvoicePreview();
+        updateInvoiceDownloadState();
+
+        const notices = [];
+
+        if (overLimitCount) {
+          notices.push(
+            `${overLimitCount} 筆總額超過 3,000 元`
+          );
+        }
+
+        if (preparedInvoices.missingCount) {
+          notices.push(
+            `${preparedInvoices.missingCount} 筆未對應運單號`
+          );
+        }
+
+        setInvoiceMessage(
+          `讀取完成：${invoices.length} 筆訂單、` +
+          `${matchedCount} 筆已對應順豐運單` +
+          (notices.length
+            ? `；${notices.join("；")}。`
+            : "。"),
+          notices.length ? "warning" : ""
+        );
+      } catch (error) {
+        console.error(error);
+
+        if (token !== invoiceLoadToken) {
+          return;
+        }
+
+        preparedInvoices = null;
+        invoiceDownloadBtn.disabled = true;
+
+        setInvoiceMessage(
+          `無法建立清關發票對應：${error.message}`,
+          "error"
+        );
+
+        invoicePreview.innerHTML = `
+          <div class="empty">
+            請確認 orders 是順豐下單表，sf 是包含客戶訂單號與運單號的對照表。
+          </div>
+        `;
+      }
+    }
+
+    function getInvoiceWorksheetTables(
+      entries
+    ) {
+      const sharedStrings =
+        entries["xl/sharedStrings.xml"]
+          ? parseSharedStrings(
+              decodeZipText(
+                entries[
+                  "xl/sharedStrings.xml"
+                ]
+              )
+            )
+          : [];
+
+      return Object.keys(entries)
+        .filter(name =>
+          /^xl\/worksheets\/sheet\d+\.xml$/
+            .test(name)
+        )
+        .sort((left, right) =>
+          left.localeCompare(
+            right,
+            undefined,
+            { numeric: true }
+          )
+        )
+        .map(name =>
+          parseWorksheetRows(
+            decodeZipText(entries[name]),
+            sharedStrings
+          )
+        );
+    }
+
+    function findInvoiceWorksheet(
+      entries,
+      requiredHeaders,
+      label
+    ) {
+      for (
+        const rows of
+        getInvoiceWorksheetTables(entries)
+      ) {
+        const headerRowIndex =
+          rows.findIndex(row => {
+            const headers =
+              row.map(normalizeInvoiceHeader);
+
+            return requiredHeaders.every(
+              header => headers.includes(header)
+            );
+          });
+
+        if (headerRowIndex !== -1) {
+          const headers =
+            rows[headerRowIndex]
+              .map(normalizeInvoiceHeader);
+
+          const indexes = {};
+
+          requiredHeaders.forEach(header => {
+            indexes[header] =
+              headers.indexOf(header);
+          });
+
+          return {
+            rows,
+            headerRowIndex,
+            indexes
+          };
+        }
+      }
+
+      throw new Error(
+        `${label} 找不到必要欄位：` +
+        requiredHeaders.join("、")
+      );
+    }
+
+    function readInvoiceOrdersWorkbook(
+      entries
+    ) {
+      const required = [
+        "客戶訂單號",
+        "收件方姓名",
+        "收件方手機號",
+        "收件方詳細地址",
+        "商品名稱",
+        "商品數量",
+        "商品單價"
+      ];
+
+      const selected =
+        findInvoiceWorksheet(
+          entries,
+          required,
+          "orders.xlsx"
+        );
+
+      const orderMap = new Map();
+
+      selected.rows
+        .slice(selected.headerRowIndex + 1)
+        .forEach(row => {
+          const orderNumber =
+            normalizeCourierText(
+              row[
+                selected.indexes[
+                  "客戶訂單號"
+                ]
+              ]
+            );
+
+          if (
+            !orderNumber ||
+            /必填|max\s*=/i.test(orderNumber)
+          ) {
+            return;
+          }
+
+          let order =
+            orderMap.get(orderNumber);
+
+          if (!order) {
+            order = {
+              orderNumber,
+              buyer: cleanInvoiceText(
+                row[
+                  selected.indexes[
+                    "收件方姓名"
+                  ]
+                ]
+              ),
+              phone: cleanInvoiceText(
+                normalizeCourierPhone(
+                  row[
+                    selected.indexes[
+                      "收件方手機號"
+                    ]
+                  ]
+                )
+              ),
+              address: cleanInvoiceText(
+                row[
+                  selected.indexes[
+                    "收件方詳細地址"
+                  ]
+                ]
+              ),
+              products: []
+            };
+
+            orderMap.set(orderNumber, order);
+          }
+
+          order.products.push({
+            name: cleanInvoiceText(
+              row[
+                selected.indexes[
+                  "商品名稱"
+                ]
+              ]
+            ),
+            quantity: normalizeInvoiceInteger(
+              row[
+                selected.indexes[
+                  "商品數量"
+                ]
+              ]
+            ),
+            price: normalizeInvoiceInteger(
+              row[
+                selected.indexes[
+                  "商品單價"
+                ]
+              ]
+            )
+          });
+        });
+
+      const orders = Array.from(
+        orderMap.values()
+      ).sort((left, right) =>
+        left.orderNumber.localeCompare(
+          right.orderNumber,
+          "zh-Hant"
+        )
+      );
+
+      if (!orders.length) {
+        throw new Error(
+          "orders.xlsx 中沒有有效的客戶訂單號"
+        );
+      }
+
+      return orders;
+    }
+
+    function readInvoiceSfWorkbook(
+      entries
+    ) {
+      const required = [
+        "順豐運單號(母單號和子單號)",
+        "客戶訂單號"
+      ];
+
+      const selected =
+        findInvoiceWorksheet(
+          entries,
+          required,
+          "sf.xlsx"
+        );
+
+      const sfMap = new Map();
+
+      selected.rows
+        .slice(selected.headerRowIndex + 1)
+        .forEach(row => {
+          const orderNumber =
+            normalizeCourierText(
+              row[
+                selected.indexes[
+                  "客戶訂單號"
+                ]
+              ]
+            );
+
+          if (!orderNumber) {
+            return;
+          }
+
+          sfMap.set(
+            orderNumber,
+            cleanInvoiceText(
+              row[
+                selected.indexes[
+                  "順豐運單號(母單號和子單號)"
+                ]
+              ]
+            )
+          );
+        });
+
+      if (!sfMap.size) {
+        throw new Error(
+          "sf.xlsx 中沒有有效的客戶訂單號"
+        );
+      }
+
+      return sfMap;
+    }
+
+    function buildInvoiceData(
+      orders,
+      sfMap
+    ) {
+      return orders.map(order => {
+        const mappedSf =
+          cleanInvoiceText(
+            sfMap.get(order.orderNumber) || ""
+          );
+
+        const total =
+          order.products.reduce(
+            (sum, product) =>
+              sum +
+              product.quantity *
+              product.price,
+            0
+          );
+
+        return {
+          ...order,
+          sfNumber:
+            mappedSf ||
+            `NO_SF_${order.orderNumber}`,
+          matched: Boolean(mappedSf),
+          total
+        };
+      });
+    }
+
+    function normalizeInvoiceHeader(value) {
+      return normalizeCourierText(value)
+        .replace(/^\uFEFF/, "")
+        .replace(/^\*/, "")
+        .trim();
+    }
+
+    function normalizeInvoiceInteger(value) {
+      const number = Number(
+        normalizeCourierText(value)
+      );
+
+      return Number.isFinite(number)
+        ? Math.trunc(number)
+        : 0;
+    }
+
+    function cleanInvoiceText(value) {
+      const text =
+        normalizeCourierText(value);
+
+      if (
+        text.includes("公司統編") ||
+        text.includes("未完成交易")
+      ) {
+        return "";
+      }
+
+      return text.slice(0, 100);
+    }
+
+    function getInvoiceSettings() {
+      const settings = {
+        sellerName:
+          normalizeCourierText(
+            invoiceSellerName.value
+          ),
+        sellerId:
+          normalizeCourierText(
+            invoiceSellerId.value
+          ),
+        prefix:
+          normalizeCourierText(
+            invoicePrefix.value
+          ),
+        date:
+          normalizeCourierText(
+            invoiceDate.value
+          )
+      };
+
+      if (
+        !settings.sellerName ||
+        !settings.sellerId ||
+        !settings.prefix ||
+        !settings.date
+      ) {
+        throw new Error(
+          "營業人名稱、統編、發票字首與日期都必須填寫"
+        );
+      }
+
+      if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(
+          settings.date
+        )
+      ) {
+        throw new Error(
+          "發票日期必須是 YYYY-MM-DD 格式"
+        );
+      }
+
+      return settings;
+    }
+
+    function updateInvoiceDownloadState() {
+      let settingsValid = true;
+
+      try {
+        getInvoiceSettings();
+      } catch (error) {
+        settingsValid = false;
+      }
+
+      invoiceDownloadBtn.disabled =
+        !preparedInvoices ||
+        !settingsValid;
+    }
+
+    function resetInvoiceMetrics() {
+      [
+        "invoiceOrderCount",
+        "invoiceMatchedCount",
+        "invoiceOverLimitCount",
+        "invoiceMissingCount"
+      ].forEach(id => {
+        document.getElementById(
+          id
+        ).textContent = "0";
+      });
+    }
+
+    function setInvoiceMessage(
+      text,
+      type = ""
+    ) {
+      invoiceMessage.textContent = text;
+
+      invoiceMessage.classList.toggle(
+        "error",
+        type === "error"
+      );
+
+      invoiceMessage.classList.toggle(
+        "warning",
+        type === "warning"
+      );
+    }
+
+    function renderInvoicePreview() {
+      if (!preparedInvoices) {
+        return;
+      }
+
+      let settings;
+
+      try {
+        settings = getInvoiceSettings();
+      } catch (error) {
+        settings = {
+          prefix:
+            normalizeCourierText(
+              invoicePrefix.value
+            ) || "—"
+        };
+      }
+
+      const headers = [
+        "客戶訂單號",
+        "順豐運單號／JPG 檔名",
+        "發票號碼",
+        "買受人名稱",
+        "商品列數",
+        "總計",
+        "檢查結果"
+      ];
+
+      const usedImageNames = new Set();
+
+      invoicePreview.innerHTML =
+        `<table>` +
+          `<thead><tr>` +
+            headers.map(header =>
+              `<th>${escapeHtml(header)}</th>`
+            ).join("") +
+          `</tr></thead>` +
+          `<tbody>` +
+            preparedInvoices.invoices
+              .map((invoice, index) => {
+                const issues = [];
+                const imageName =
+                  getUniqueInvoiceImageName(
+                    invoice.sfNumber,
+                    usedImageNames
+                  );
+
+                if (!invoice.matched) {
+                  issues.push("未對應運單");
+                }
+
+                if (invoice.total > 3000) {
+                  issues.push("總額超過 3,000");
+                }
+
+                const values = [
+                  invoice.orderNumber,
+                  imageName,
+                  getInvoiceNumber(
+                    preparedInvoices.startNumber,
+                    index,
+                    settings.prefix
+                  ),
+                  invoice.buyer,
+                  invoice.products.length,
+                  invoice.total,
+                  issues.length
+                    ? issues.join("、")
+                    : "正常"
+                ];
+
+                return (
+                  `<tr>` +
+                    values.map((value, cellIndex) => {
+                      const className =
+                        cellIndex === 6 &&
+                        issues.length
+                          ? "over-limit"
+                          : "";
+
+                      return (
+                        `<td class="${className}">` +
+                          escapeHtml(value) +
+                        `</td>`
+                      );
+                    }).join("") +
+                  `</tr>`
+                );
+              }).join("") +
+          `</tbody>` +
+        `</table>`;
+    }
+
+    function getInvoiceNumber(
+      startNumber,
+      index,
+      prefix
+    ) {
+      return (
+        normalizeCourierText(prefix) +
+        String(startNumber + index)
+      );
+    }
+
+    function getLocalIsoDate(value) {
+      const year = value.getFullYear();
+      const month = String(
+        value.getMonth() + 1
+      ).padStart(2, "0");
+      const day = String(
+        value.getDate()
+      ).padStart(2, "0");
+
+      return `${year}-${month}-${day}`;
+    }
+
+    function getInvoiceZipFileName(date) {
+      return (
+        String(date).replace(/-/g, "") +
+        "-清關發票-JPG.zip"
+      );
+    }
+
+    function getUniqueInvoiceImageName(
+      sfNumber,
+      usedNames
+    ) {
+      let stem = String(sfNumber || "NO_SF")
+        .replace(/[\\/:*?"<>|]/g, "_")
+        .replace(/[\u0000-\u001F]/g, "")
+        .replace(/[. ]+$/g, "")
+        .trim() || "NO_SF";
+
+      let candidate = `${stem}.jpg`;
+      let suffix = 2;
+
+      while (usedNames.has(candidate)) {
+        candidate = `${stem}-${suffix}.jpg`;
+        suffix++;
+      }
+
+      usedNames.add(candidate);
+      return candidate;
+    }
+
+    function yieldToBrowser() {
+      return new Promise(resolve => {
+        if (
+          typeof requestAnimationFrame ===
+          "function"
+        ) {
+          requestAnimationFrame(
+            () => resolve()
+          );
+        } else {
+          setTimeout(resolve, 0);
+        }
+      });
+    }
+
+    async function createInvoiceJpeg(
+      invoice,
+      invoiceNumber,
+      settings
+    ) {
+      const canvas =
+        document.createElement("canvas");
+
+      canvas.width = 1200;
+      canvas.height = 1600;
+
+      let context = canvas.getContext("2d");
+
+      if (!context) {
+        throw new Error(
+          "瀏覽器無法建立 JPG 畫布"
+        );
+      }
+
+      const contentX = 150;
+      const contentWidth = 900;
+      const detailWidths = [
+        125,
+        130,
+        125,
+        520
+      ];
+      const productWidths = [
+        432,
+        156,
+        155,
+        157
+      ];
+
+      context.font =
+        '18px "Microsoft JhengHei", sans-serif';
+
+      const remark = [
+        invoice.phone,
+        invoice.address
+      ].filter(Boolean).join("\n");
+
+      const remarkHeight = Math.max(
+        76,
+        measureInvoiceCellHeight(
+          context,
+          remark,
+          detailWidths[3],
+          18,
+          25
+        )
+      );
+
+      const detailRows = [
+        48,
+        remarkHeight,
+        48,
+        48,
+        48
+      ];
+
+      context.font =
+        '18px "Microsoft JhengHei", sans-serif';
+
+      const productHeights =
+        invoice.products.map(product =>
+          Math.max(
+            48,
+            measureInvoiceCellHeight(
+              context,
+              product.name,
+              productWidths[0],
+              18,
+              25
+            )
+          )
+        );
+
+      const detailHeight =
+        detailRows.reduce(
+          (sum, height) => sum + height,
+          0
+        );
+
+      const productHeight =
+        48 + productHeights.reduce(
+          (sum, height) => sum + height,
+          0
+        );
+
+      canvas.height = Math.max(
+        1600,
+        95 + detailHeight + 22 +
+        productHeight + 70
+      );
+
+      context = canvas.getContext("2d");
+      context.fillStyle = "#f5f6f7";
+      context.fillRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+
+      context.fillStyle = "#111";
+      context.font =
+        'bold 28px "Microsoft JhengHei", sans-serif';
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText(
+        "電子發票明細",
+        canvas.width / 2,
+        58
+      );
+
+      let y = 95;
+
+      const detailData = [
+        [
+          "發票號碼",
+          invoiceNumber,
+          "發票日期",
+          settings.date
+        ],
+        [
+          "發票狀態",
+          "已開立",
+          "發票備註",
+          remark
+        ],
+        [
+          "營業人統編",
+          settings.sellerId,
+          "營業人名稱",
+          settings.sellerName
+        ],
+        [
+          "買受人統編",
+          "-",
+          "買受人名稱",
+          invoice.buyer
+        ],
+        [
+          "課稅別",
+          "免稅",
+          "總計",
+          invoice.total
+        ]
+      ];
+
+      detailData.forEach((row, rowIndex) => {
+        let x = contentX;
+        const height = detailRows[rowIndex];
+
+        row.forEach((value, cellIndex) => {
+          drawInvoiceCanvasCell(
+            context,
+            x,
+            y,
+            detailWidths[cellIndex],
+            height,
+            value,
+            {
+              bold: cellIndex % 2 === 0,
+              fill:
+                cellIndex % 2 === 0
+                  ? "#f0f0f0"
+                  : "#ffffff",
+              align:
+                cellIndex % 2 === 0
+                  ? "center"
+                  : "left"
+            }
+          );
+
+          x += detailWidths[cellIndex];
+        });
+
+        y += height;
+      });
+
+      y += 22;
+
+      let x = contentX;
+
+      [
+        "品名",
+        "數量",
+        "單價",
+        "金額"
+      ].forEach((header, index) => {
+        drawInvoiceCanvasCell(
+          context,
+          x,
+          y,
+          productWidths[index],
+          48,
+          header,
+          {
+            bold: true,
+            fill: "#f0f0f0",
+            align: "center"
+          }
+        );
+
+        x += productWidths[index];
+      });
+
+      y += 48;
+
+      invoice.products.forEach(
+        (product, index) => {
+          const height = productHeights[index];
+          const amount =
+            product.quantity * product.price;
+
+          x = contentX;
+
+          [
+            product.name,
+            product.quantity,
+            product.price,
+            amount
+          ].forEach((value, cellIndex) => {
+            drawInvoiceCanvasCell(
+              context,
+              x,
+              y,
+              productWidths[cellIndex],
+              height,
+              value,
+              {
+                fill: "#ffffff",
+                align:
+                  cellIndex === 0
+                    ? "left"
+                    : "left"
+              }
+            );
+
+            x += productWidths[cellIndex];
+          });
+
+          y += height;
+        }
+      );
+
+      return new Promise((resolve, reject) => {
+        canvas.toBlob(
+          blob => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(
+                new Error("JPG 編碼失敗")
+              );
+            }
+          },
+          "image/jpeg",
+          0.92
+        );
+      });
+    }
+
+    function measureInvoiceCellHeight(
+      context,
+      value,
+      width,
+      padding,
+      lineHeight
+    ) {
+      const lines = wrapInvoiceCanvasText(
+        context,
+        value,
+        width - padding * 2
+      );
+
+      return (
+        lines.length * lineHeight +
+        padding * 1.2
+      );
+    }
+
+    function wrapInvoiceCanvasText(
+      context,
+      value,
+      maximumWidth
+    ) {
+      const lines = [];
+
+      String(value == null ? "" : value)
+        .split(/\r?\n/)
+        .forEach(paragraph => {
+          if (!paragraph) {
+            lines.push("");
+            return;
+          }
+
+          let line = "";
+
+          for (const character of paragraph) {
+            const candidate = line + character;
+
+            if (
+              line &&
+              context.measureText(candidate)
+                .width > maximumWidth
+            ) {
+              lines.push(line);
+              line = character;
+            } else {
+              line = candidate;
+            }
+          }
+
+          lines.push(line);
+        });
+
+      return lines.length ? lines : [""];
+    }
+
+    function drawInvoiceCanvasCell(
+      context,
+      x,
+      y,
+      width,
+      height,
+      value,
+      options = {}
+    ) {
+      const padding = 12;
+      const lineHeight = 25;
+
+      context.fillStyle =
+        options.fill || "#ffffff";
+      context.fillRect(x, y, width, height);
+
+      context.strokeStyle = "#d4d4d4";
+      context.lineWidth = 1;
+      context.strokeRect(
+        x + 0.5,
+        y + 0.5,
+        width - 1,
+        height - 1
+      );
+
+      context.save();
+      context.beginPath();
+      context.rect(
+        x + 1,
+        y + 1,
+        width - 2,
+        height - 2
+      );
+      context.clip();
+
+      context.fillStyle = "#111";
+      context.font =
+        `${options.bold ? "bold " : ""}` +
+        '18px "Microsoft JhengHei", sans-serif';
+      context.textBaseline = "middle";
+      context.textAlign =
+        options.align || "left";
+
+      const lines = wrapInvoiceCanvasText(
+        context,
+        value,
+        width - padding * 2
+      );
+
+      const startY =
+        y +
+        (height - lines.length * lineHeight) /
+        2 +
+        lineHeight / 2;
+
+      const textX =
+        context.textAlign === "center"
+          ? x + width / 2
+          : x + padding;
+
+      lines.forEach((line, index) => {
+        context.fillText(
+          line,
+          textX,
+          startY + index * lineHeight
+        );
+      });
+
+      context.restore();
+    }
+
+    function readCourierSourceWorkbook(
+      entries,
+      fileName
+    ) {
+      const sharedStrings =
+        entries["xl/sharedStrings.xml"]
+          ? parseSharedStrings(
+              decodeZipText(
+                entries[
+                  "xl/sharedStrings.xml"
+                ]
+              )
+            )
+          : [];
+
+      const sheetNames =
+        Object.keys(entries)
+          .filter(name =>
+            /^xl\/worksheets\/sheet\d+\.xml$/
+              .test(name)
+          )
+          .sort((left, right) =>
+            left.localeCompare(
+              right,
+              undefined,
+              { numeric: true }
+            )
+          );
+
+      const required = [
+        "出貨編號",
+        "收件人",
+        "商品資訊",
+        "數量",
+        "電話",
+        "地址"
+      ];
+
+      let selected = null;
+
+      for (const sheetName of sheetNames) {
+        const rows =
+          parseWorksheetRows(
+            decodeZipText(
+              entries[sheetName]
+            ),
+            sharedStrings
+          );
+
+        const headerRowIndex =
+          rows.findIndex(row => {
+            const values =
+              row.map(normalizeCourierHeader);
+
+            return required.every(header =>
+              values.includes(header)
+            );
+          });
+
+        if (headerRowIndex !== -1) {
+          selected = {
+            rows,
+            headerRowIndex
+          };
+          break;
+        }
+      }
+
+      if (!selected) {
+        throw new Error(
+          "找不到符合出貨撿貨表格式的工作表"
+        );
+      }
+
+      const headers =
+        selected.rows[
+          selected.headerRowIndex
+        ].map(normalizeCourierHeader);
+
+      const indexes = {};
+
+      required.forEach(header => {
+        const index =
+          headers.indexOf(header);
+
+        if (index === -1) {
+          throw new Error(
+            `找不到「${header}」欄位`
+          );
+        }
+
+        indexes[header] = index;
+      });
+
+      const structuralMode =
+        headers.includes("撿貨員") &&
+        headers.includes("打包員")
+          ? MODE_PREPAID
+          : MODE_COLLECT;
+
+      const orders = [];
+      const orderMap = new Map();
+      let currentOrder = null;
+
+      selected.rows
+        .slice(
+          selected.headerRowIndex + 1
+        )
+        .forEach((row, offset) => {
+          const shippingNumber =
+            normalizeCourierText(
+              row[indexes["出貨編號"]]
+            );
+
+          const recipient =
+            normalizeCourierText(
+              row[indexes["收件人"]]
+            );
+
+          const phone =
+            normalizeCourierPhone(
+              row[indexes["電話"]]
+            );
+
+          const address =
+            normalizeCourierText(
+              row[indexes["地址"]]
+            );
+
+          if (shippingNumber) {
+            currentOrder =
+              orderMap.get(shippingNumber);
+
+            if (!currentOrder) {
+              currentOrder = {
+                shippingNumber,
+                recipient,
+                phone,
+                address,
+                sourceRow:
+                  selected.headerRowIndex +
+                  offset + 2,
+                products: []
+              };
+
+              orderMap.set(
+                shippingNumber,
+                currentOrder
+              );
+
+              orders.push(currentOrder);
+            } else {
+              mergeCourierOrderField(
+                currentOrder,
+                "recipient",
+                recipient
+              );
+
+              mergeCourierOrderField(
+                currentOrder,
+                "phone",
+                phone
+              );
+
+              mergeCourierOrderField(
+                currentOrder,
+                "address",
+                address
+              );
+            }
+          }
+
+          if (!currentOrder) {
+            return;
+          }
+
+          if (recipient) {
+            mergeCourierOrderField(
+              currentOrder,
+              "recipient",
+              recipient
+            );
+          }
+
+          if (phone) {
+            mergeCourierOrderField(
+              currentOrder,
+              "phone",
+              phone
+            );
+          }
+
+          if (address) {
+            mergeCourierOrderField(
+              currentOrder,
+              "address",
+              address
+            );
+          }
+
+          const productName =
+            normalizeCourierText(
+              row[indexes["商品資訊"]]
+            );
+
+          if (productName) {
+            currentOrder.products.push({
+              name: productName,
+              quantity:
+                normalizeCourierQuantity(
+                  row[indexes["數量"]]
+                )
+            });
+          }
+        });
+
+      if (!orders.length) {
+        throw new Error(
+          "工作表中沒有有效的出貨編號"
+        );
+      }
+
+      return {
+        detectedMode: structuralMode,
+        orders
+      };
+    }
+
+    function mergeCourierOrderField(
+      order,
+      key,
+      value
+    ) {
+      if (!value) {
+        return;
+      }
+
+      if (
+        order[key] &&
+        order[key] !== value
+      ) {
+        throw new Error(
+          `出貨編號 ${order.shippingNumber} 的` +
+          `收件資料不一致，已停止避免錯位`
+        );
+      }
+
+      order[key] = value;
+    }
+
+    function parseSharedStrings(xmlText) {
+      const documentXml =
+        parseXmlDocument(xmlText);
+
+      return Array.from(
+        documentXml.getElementsByTagName(
+          "si"
+        )
+      ).map(item => item.textContent || "");
+    }
+
+    function parseWorksheetRows(
+      xmlText,
+      sharedStrings
+    ) {
+      const documentXml =
+        parseXmlDocument(xmlText);
+
+      return Array.from(
+        documentXml.getElementsByTagName(
+          "row"
+        )
+      ).map(rowNode => {
+        const row = [];
+
+        Array.from(
+          rowNode.getElementsByTagName("c")
+        ).forEach(cell => {
+          const reference =
+            cell.getAttribute("r") || "";
+
+          const letters =
+            reference.match(/^[A-Z]+/);
+
+          if (!letters) {
+            return;
+          }
+
+          const columnIndex =
+            xlsxColumnNumber(
+              letters[0]
+            ) - 1;
+
+          const type =
+            cell.getAttribute("t") || "";
+
+          const valueNode =
+            cell.getElementsByTagName("v")[0];
+
+          let value = "";
+
+          if (type === "inlineStr") {
+            const inline =
+              cell.getElementsByTagName("is")[0];
+
+            value = inline
+              ? inline.textContent || ""
+              : "";
+          } else if (type === "s") {
+            const index = valueNode
+              ? Number.parseInt(
+                  valueNode.textContent,
+                  10
+                )
+              : -1;
+
+            value =
+              sharedStrings[index] || "";
+          } else {
+            value = valueNode
+              ? valueNode.textContent || ""
+              : "";
+          }
+
+          row[columnIndex] = value;
+        });
+
+        return row;
+      });
+    }
+
+    function parseXmlDocument(xmlText) {
+      const documentXml =
+        new DOMParser().parseFromString(
+          xmlText,
+          "application/xml"
+        );
+
+      if (
+        documentXml.getElementsByTagName(
+          "parsererror"
+        ).length
+      ) {
+        throw new Error(
+          "XLSX 內的 XML 格式不正確"
+        );
+      }
+
+      return documentXml;
+    }
+
+    function xlsxColumnNumber(letters) {
+      let result = 0;
+
+      for (const letter of letters) {
+        result =
+          result * 26 +
+          letter.charCodeAt(0) - 64;
+      }
+
+      return result;
+    }
+
+    function normalizeCourierHeader(value) {
+      return normalizeCourierText(value)
+        .replace(/^\uFEFF/, "")
+        .trim();
+    }
+
+    function normalizeCourierText(value) {
+      return String(
+        value == null
+          ? ""
+          : value
+      ).trim();
+    }
+
+    function normalizeCourierPhone(value) {
+      let text =
+        normalizeCourierText(value)
+          .replace(/^'/, "")
+          .replace(/^tel:/i, "")
+          .replace(/\.0+$/, "");
+
+      if (
+        /^[+-]?\d+(?:\.\d+)?[eE][+-]?\d+$/.test(
+          text
+        )
+      ) {
+        text =
+          expandScientificInteger(text);
+      }
+
+      if (/^9\d{8}$/.test(text)) {
+        text = `0${text}`;
+      }
+
+      return text;
+    }
+
+    function expandScientificInteger(value) {
+      const match = String(value).match(
+        /^([+-]?)(\d+)(?:\.(\d*))?[eE]([+-]?\d+)$/
+      );
+
+      if (!match) {
+        return String(value);
+      }
+
+      const sign = match[1];
+      const integer = match[2];
+      const fraction = match[3] || "";
+      const exponent = Number(match[4]);
+      const digits = integer + fraction;
+      const point = integer.length + exponent;
+
+      if (point <= 0) {
+        return (
+          sign +
+          "0." +
+          "0".repeat(-point) +
+          digits
+        ).replace(/\.0+$/, "");
+      }
+
+      if (point >= digits.length) {
+        return (
+          sign +
+          digits +
+          "0".repeat(
+            point - digits.length
+          )
+        );
+      }
+
+      return (
+        sign +
+        digits.slice(0, point) +
+        "." +
+        digits.slice(point)
+      ).replace(/\.0+$/, "");
+    }
+
+    function normalizeCourierQuantity(value) {
+      const parsed = Number.parseInt(
+        String(value == null ? "" : value),
+        10
+      );
+
+      return (
+        Number.isFinite(parsed) &&
+        parsed > 0
+      )
+        ? parsed
+        : 1;
+    }
+
+    function transformCourierProducts(products) {
+      return products.map(product => ({
+        name: product.name,
+        quantity: product.quantity,
+        price:
+          getCourierDeclaredPrice(
+            product.name
+          )
+      }));
+    }
+
+    function shouldExcludeCourierProduct(
+      value
+    ) {
+      const text =
+        normalizeCourierText(value);
+
+      if (/[（(]書籍[)）]/.test(text)) {
+        return (
+          /番外冊|番外册|別冊|别册/.test(
+            text
+          )
+        );
+      }
+
+      return (
+        !text ||
+        /檔案袋|档案袋|週邊|周邊|滿額贈|满额赠|立牌|吊飾|吊饰|滑鼠墊|鼠标垫|簽名板|签名板|卡組|卡组|海報|海报|大全套|番外冊|番外册|別冊|别册/.test(
+          text
+        )
+      );
+    }
+
+    function cleanCourierProductName(value) {
+      let text =
+        normalizeCourierText(value);
+
+      const meaningfulTags = [];
+      let match;
+
+      while (
+        (match = text.match(
+          /^\[([^\]]+)\]/
+        ))
+      ) {
+        const tag = match[1];
+
+        if (
+          /^第\d/.test(tag) ||
+          /^(?:上|中|下)(?:[+＋](?:上|中|下))+$/.test(
+            tag
+          )
+        ) {
+          meaningfulTags.push(
+            `[${tag}]`
+          );
+        }
+
+        text =
+          text.slice(
+            match[0].length
+          );
+      }
+
+      text =
+        meaningfulTags.join("") +
+        text.trim();
+
+      const bookMatch =
+        text.match(/^(.*?[（(]書籍[)）])/);
+
+      if (bookMatch) {
+        text = bookMatch[1].trim();
+      }
+
+      const aliases = new Map([
+        [
+          "成癮性(書籍)",
+          "成癮(書籍)"
+        ],
+        [
+          "紳士社會 Ⅰ：浮華縱情(書籍)",
+          "紳士社會(書籍)"
+        ],
+        [
+          "穿堂驚掠琵琶聲(書籍)",
+          "穿堂琵琶聲(書籍)"
+        ],
+        [
+          "一個鋼蹦兒(書籍)",
+          "一個鋼蹦兒1-5(書籍)"
+        ]
+      ]);
+
+      return aliases.get(text) || text;
+    }
+
+    function consolidateCourierSeries(items) {
+      const groups = new Map();
+
+      items.forEach(item => {
+        const series =
+          parseCourierSeriesName(
+            item.name
+          );
+
+        if (!series) {
+          return;
+        }
+
+        const key =
+          `${series.marker}|${series.tail}`;
+
+        if (!groups.has(key)) {
+          groups.set(key, []);
+        }
+
+        groups.get(key).push({
+          item,
+          series
+        });
+      });
+
+      const removed = new Set();
+      const additions = [];
+
+      groups.forEach(group => {
+        if (group.length < 2) {
+          return;
+        }
+
+        if (
+          !/萬物風華錄|PASSION/i.test(
+            group[0].series.tail
+          )
+        ) {
+          return;
+        }
+
+        const quantity =
+          group[0].item.quantity;
+
+        if (
+          !group.every(entry =>
+            entry.item.quantity === quantity
+          )
+        ) {
+          return;
+        }
+
+        const volumeSet = new Set();
+
+        group.forEach(entry => {
+          entry.series.volumes.forEach(
+            volume => volumeSet.add(volume)
+          );
+        });
+
+        const volumes =
+          Array.from(volumeSet)
+            .sort((left, right) =>
+              left - right
+            );
+
+        if (volumes.length < 2) {
+          return;
+        }
+
+        group.forEach(entry =>
+          removed.add(entry.item)
+        );
+
+        additions.push({
+          name:
+            `[第${formatCourierVolumes(volumes)}` +
+            `${group[0].series.marker}]` +
+            group[0].series.tail,
+          quantity,
+          firstIndex: Math.min(
+            ...group.map(
+              entry => entry.item.firstIndex
+            )
+          )
+        });
+      });
+
+      return [
+        ...items.filter(item =>
+          !removed.has(item)
+        ),
+        ...additions
+      ];
+    }
+
+    function parseCourierSeriesName(name) {
+      const match = name.match(
+        /^\[第([0-9０-９+＋\-－–—至到]+)(集|部)(?:[+＋]番外)?\](.+)$/
+      );
+
+      if (!match) {
+        return null;
+      }
+
+      const volumes =
+        parseCourierVolumes(
+          match[1]
+        );
+
+      return volumes.length
+        ? {
+            volumes,
+            marker: match[2],
+            tail: match[3]
+          }
+        : null;
+    }
+
+    function parseCourierVolumes(value) {
+      const text = String(value)
+        .replace(/[０-９]/g, digit =>
+          String(
+            digit.charCodeAt(0) -
+            0xff10
+          )
+        )
+        .replace(/[＋]/g, "+")
+        .replace(/[－–—至到]/g, "-");
+
+      if (/^\d+-\d+$/.test(text)) {
+        const [start, end] =
+          text.split("-").map(Number);
+
+        if (
+          start > 0 &&
+          end >= start &&
+          end - start < 100
+        ) {
+          return Array.from(
+            { length: end - start + 1 },
+            (_, index) => start + index
+          );
+        }
+      }
+
+      return text
+        .split("+")
+        .map(Number)
+        .filter(number =>
+          Number.isInteger(number) &&
+          number > 0
+        );
+    }
+
+    function formatCourierVolumes(volumes) {
+      const continuous =
+        volumes.every(
+          (value, index) =>
+            index === 0 ||
+            value === volumes[index - 1] + 1
+        );
+
+      return continuous
+        ? `${volumes[0]}-${volumes[volumes.length - 1]}`
+        : volumes.join("+");
+    }
+
+    function getCourierDeclaredPrice(name) {
+      let volumeCount = 1;
+
+      const series =
+        parseCourierSeriesName(name);
+
+      if (series) {
+        volumeCount =
+          new Set(series.volumes).size;
+      } else if (
+        /^\[(?:上|中|下)(?:[+＋](?:上|中|下))+\]/.test(
+          name
+        )
+      ) {
+        volumeCount =
+          name.match(
+            /^\[([^\]]+)\]/
+          )[1].split(/[+＋]/).length;
+      }
+
+      const plainRange = name.match(
+        /(\d+)\s*[-－–—至到]\s*(\d+)\s*[（(]書籍[)）]/
+      );
+
+      if (plainRange) {
+        const start = Number(plainRange[1]);
+        const end = Number(plainRange[2]);
+
+        if (
+          start > 0 &&
+          end >= start &&
+          end - start < 100
+        ) {
+          volumeCount = Math.max(
+            volumeCount,
+            end - start + 1
+          );
+        }
+      }
+
+      const overrides = new Map([
+        [
+          "全世界都在等我們分手1-3(書籍)",
+          400
+        ],
+        [
+          "[第3-6集]PASSION(書籍)",
+          500
+        ]
+      ]);
+
+      if (overrides.has(name)) {
+        return overrides.get(name);
+      }
+
+      return volumeCount === 3
+        ? 500
+        : volumeCount * 200;
+    }
+
+    function assignCourierSenders(orders) {
+      const names =
+        shuffleCourierValues(
+          COURIER_SENDER_NAMES
+        );
+
+      const addresses = new Set();
+
+      orders.forEach((order, index) => {
+        let address;
+
+        do {
+          address =
+            createRandomCourierAddress();
+        } while (addresses.has(address));
+
+        addresses.add(address);
+
+        order.sender = {
+          name: names[index],
+          phone:
+            COURIER_SENDER_PHONES[
+              courierRandomInt(
+                COURIER_SENDER_PHONES.length
+              )
+            ],
+          address
+        };
+      });
+    }
+
+    function shuffleCourierValues(values) {
+      const shuffled = [...values];
+
+      for (
+        let index = shuffled.length - 1;
+        index > 0;
+        index--
+      ) {
+        const target =
+          courierRandomInt(index + 1);
+
+        [
+          shuffled[index],
+          shuffled[target]
+        ] = [
+          shuffled[target],
+          shuffled[index]
+        ];
+      }
+
+      return shuffled;
+    }
+
+    function courierRandomInt(maximum) {
+      if (
+        window.crypto &&
+        window.crypto.getRandomValues
+      ) {
+        const value = new Uint32Array(1);
+        window.crypto.getRandomValues(value);
+        return value[0] % maximum;
+      }
+
+      return Math.floor(
+        Math.random() * maximum
+      );
+    }
+
+    function createRandomCourierAddress() {
+      const street =
+        COURIER_STREETS[
+          courierRandomInt(
+            COURIER_STREETS.length
+          )
+        ];
+
+      const lane =
+        courierRandomInt(28) + 1;
+
+      const alley =
+        courierRandomInt(8) + 1;
+
+      const number =
+        courierRandomInt(220) + 1;
+
+      const floor =
+        courierRandomInt(12) + 1;
+
+      return (
+        `台北市中山區${street}` +
+        `${lane}巷${alley}弄` +
+        `${number}號${floor}樓`
+      );
+    }
+
+    function getSelectedCourierMode() {
+      const selected =
+        document.querySelector(
+          'input[name="courierMode"]:checked'
+        );
+
+      return selected
+        ? selected.value
+        : "auto";
+    }
+
+    function getEffectiveCourierMode() {
+      const selected =
+        getSelectedCourierMode();
+
+      if (selected !== "auto") {
+        return selected;
+      }
+
+      return preparedCourier
+        ? preparedCourier.detectedMode
+        : MODE_COLLECT;
+    }
+
+    function getCourierModeLabel(mode) {
+      return mode === MODE_PREPAID
+        ? "寄付"
+        : "到付";
+    }
+
+    function updateCourierModeDisplay() {
+      document.getElementById(
+        "courierDetectedMode"
+      ).textContent =
+        getCourierModeLabel(
+          getEffectiveCourierMode()
+        );
+    }
+
+    function renderCourierPreview() {
+      if (!preparedCourier) {
+        return;
+      }
+
+      const mode =
+        getEffectiveCourierMode();
+
+      const headers = [
+        "出貨編號",
+        "寄件方姓名",
+        "寄件方手機號",
+        "寄件方詳細地址",
+        "收件方姓名",
+        "收件方手機號",
+        "收件方詳細地址",
+        "商品名稱",
+        "商品數量",
+        "商品單價",
+        "付款方式",
+        "月結卡號"
+      ];
+
+      const rows = [];
+
+      for (
+        const order of preparedCourier.orders
+      ) {
+        for (const product of order.products) {
+          rows.push({
+            order,
+            product
+          });
+        }
+      }
+
+      courierPreview.innerHTML =
+        `<table>` +
+          `<thead><tr>` +
+            headers.map(header =>
+              `<th>${escapeHtml(header)}</th>`
+            ).join("") +
+          `</tr></thead>` +
+          `<tbody>` +
+            rows.map(({ order, product }) => {
+              const values = [
+                order.shippingNumber,
+                order.sender.name,
+                order.sender.phone,
+                order.sender.address,
+                order.recipient,
+                order.phone,
+                order.address,
+                product.name,
+                product.quantity,
+                product.price,
+                getCourierModeLabel(mode),
+                mode === MODE_PREPAID
+                  ? "8860748596"
+                  : ""
+              ];
+
+              return (
+                `<tr>` +
+                  values.map((value, index) => {
+                    const className =
+                      index === 0
+                        ? "order-cell"
+                        : (
+                            index >= 1 &&
+                            index <= 3
+                              ? "sender-cell"
+                              : ""
+                          );
+
+                    return (
+                      `<td class="${className}">` +
+                        escapeHtml(value) +
+                      `</td>`
+                    );
+                  }).join("") +
+                `</tr>`
+              );
+            }).join("") +
+          `</tbody>` +
+        `</table>`;
+    }
+
+    function resetCourierMetrics() {
+      [
+        "courierOrderCount",
+        "courierRowCount",
+        "courierExcludedCount"
+      ].forEach(id => {
+        document.getElementById(
+          id
+        ).textContent = "0";
+      });
+
+      document.getElementById(
+        "courierDetectedMode"
+      ).textContent = "—";
+    }
+
+    function setCourierMessage(
+      text,
+      type = ""
+    ) {
+      courierMessage.textContent = text;
+
+      courierMessage.classList.toggle(
+        "error",
+        type === "error"
+      );
+
+      courierMessage.classList.toggle(
+        "warning",
+        type === "warning"
+      );
+    }
+
+    function getCourierOutputFileName(data) {
+      let baseName = String(
+        data.originalFileName || ""
+      )
+        .replace(/\.xlsx$/i, "")
+        .trim()
+        .replace(
+          /[-_\s]*(?:完成版|重做版|修正版|最終版|最终版|final)+$/i,
+          ""
+        );
+
+      const firstNumber =
+        data.orders[0]
+          ? data.orders[0].shippingNumber
+          : "";
+
+      const fullDate =
+        String(firstNumber).match(
+          /20\d{6}/
+        ) ||
+        baseName.match(/20\d{6}/);
+
+      let dateText;
+
+      if (fullDate) {
+        dateText = fullDate[0];
+      } else {
+        const shortDate =
+          baseName.match(
+            /(?:^|\D)(\d{4})(?:\D|$)/
+          );
+
+        if (shortDate) {
+          dateText =
+            `${new Date().getFullYear()}` +
+            shortDate[1];
+        } else {
+          const now = new Date();
+          dateText =
+            `${now.getFullYear()}` +
+            `${now.getMonth() + 1}`
+              .padStart(2, "0") +
+            `${now.getDate()}`
+              .padStart(2, "0");
+        }
+      }
+
+      const parts =
+        baseName
+          .split(/[-–—]/)
+          .map(part => part.trim())
+          .filter(Boolean);
+
+      let suffix =
+        parts.length > 1
+          ? parts[parts.length - 1]
+          : "XXX";
+
+      suffix = suffix
+        .replace(
+          /(?:完成版|重做版|修正版|最終版|最终版|final)/gi,
+          ""
+        )
+        .replace(/[\\/:*?"<>|]/g, "_")
+        .replace(/[. ]+$/g, "")
+        .trim() || "XXX";
+
+      return (
+        `${dateText}-快遞下單-大陸-` +
+        `${suffix}.xlsx`
+      );
+    }
+
+    async function createCourierXlsx(
+      data,
+      mode
+    ) {
+      /*
+       * 兩種下單表格式與樣式相同，AA 欄付款方式及 BK 欄月結卡號不同。
+       * 統一使用已驗證可正常顯示的寄付模板，再逐列改寫 AA 欄，
+       * 避免部分 Excel 版本開啟到付模板時只顯示空白預填列。
+       */
+      const templateBytes =
+        decodeBase64Bytes(
+          COURIER_TEMPLATE_BASE64.prepaid
+        );
+
+      const entries =
+        await readZipEntries(
+          templateBytes
+        );
+
+      const worksheetName =
+        "xl/worksheets/sheet1.xml";
+
+      if (!entries[worksheetName]) {
+        throw new Error(
+          "內建順豐模板缺少工作表"
+        );
+      }
+
+      entries[worksheetName] =
+        new TextEncoder().encode(
+          buildCourierWorksheetXml(
+            decodeZipText(
+              entries[worksheetName]
+            ),
+            data,
+            mode
+          )
+        );
+
+      return createZip(entries);
+    }
+
+    function buildCourierWorksheetXml(
+      templateXml,
+      data,
+      mode
+    ) {
+      const sheetDataMatch =
+        templateXml.match(
+          /<sheetData>([\s\S]*?)<\/sheetData>/
+        );
+
+      if (!sheetDataMatch) {
+        throw new Error(
+          "內建模板的資料區格式不正確"
+        );
+      }
+
+      const sourceRows =
+        sheetDataMatch[1];
+
+      const fixedRows = [1, 2].map(number => {
+        const row = sourceRows.match(
+          new RegExp(
+            `<row\\b[^>]*\\br="${number}"[^>]*>` +
+            `[\\s\\S]*?<\\/row>`
+          )
+        );
+
+        if (!row) {
+          throw new Error(
+            `內建模板缺少第 ${number} 列`
+          );
+        }
+
+        return row[0];
+      });
+
+      const templateRowMatch =
+        sourceRows.match(
+          /<row\b[^>]*\br="3"[^>]*>[\s\S]*?<\/row>/
+        );
+
+      if (!templateRowMatch) {
+        throw new Error(
+          "內建模板缺少第 3 列樣式"
+        );
+      }
+
+      const generatedRows = [];
+      let rowNumber = 3;
+
+      data.orders.forEach(order => {
+        order.products.forEach(product => {
+          let rowXml =
+            cloneCourierTemplateRow(
+              templateRowMatch[0],
+              rowNumber
+            );
+
+          const values = {
+            A: order.sender.name,
+            B: order.sender.phone,
+            D: order.sender.address,
+            S: order.shippingNumber,
+            T: order.recipient,
+            U: order.phone,
+            V: order.address,
+            W: product.name,
+            X: product.quantity,
+            Z: product.price,
+            AA: getCourierModeLabel(mode),
+            BK: mode === MODE_PREPAID
+              ? 8860748596
+              : null
+          };
+
+          [
+            "A",
+            "B",
+            "D",
+            "S",
+            "T",
+            "U",
+            "V",
+            "W",
+            "AA"
+          ].forEach(column => {
+            rowXml = setCourierWorksheetCell(
+              rowXml,
+              `${column}${rowNumber}`,
+              values[column],
+              "text"
+            );
+          });
+
+          [
+            "X",
+            "Z"
+          ].forEach(column => {
+            rowXml = setCourierWorksheetCell(
+              rowXml,
+              `${column}${rowNumber}`,
+              values[column],
+              "number"
+            );
+          });
+
+          rowXml = setCourierWorksheetCell(
+            rowXml,
+            `BK${rowNumber}`,
+            values.BK,
+            mode === MODE_PREPAID
+              ? "number"
+              : "blank"
+          );
+
+          generatedRows.push(rowXml);
+          rowNumber++;
+        });
+      });
+
+      const lastRow =
+        Math.max(2, rowNumber - 1);
+
+      let result = templateXml.replace(
+        sheetDataMatch[0],
+        `<sheetData>` +
+          fixedRows.join("") +
+          generatedRows.join("") +
+        `</sheetData>`
+      );
+
+      result = result.replace(
+        /(<dimension\b[^>]*\bref=")[^"]+("[^>]*\/>)/,
+        `$1A1:BR${lastRow}$2`
+      );
+
+      return result;
+    }
+
+    function cloneCourierTemplateRow(
+      templateRow,
+      rowNumber
+    ) {
+      return templateRow
+        .replace(
+          /(<row\b[^>]*\br=")3(")/,
+          `$1${rowNumber}$2`
+        )
+        .replace(
+          /r="([A-Z]+)3"/g,
+          (_, column) =>
+            `r="${column}${rowNumber}"`
+        );
+    }
+
+    function setCourierWorksheetCell(
+      rowXml,
+      reference,
+      value,
+      type
+    ) {
+      const escapedReference =
+        reference.replace(
+          /[.*+?^${}()|[\]\\]/g,
+          "\\$&"
+        );
+
+      const paired = new RegExp(
+        `<c\\b([^>]*\\br="${escapedReference}"[^>]*)>` +
+        `[\\s\\S]*?<\\/c>`
+      );
+
+      const selfClosing = new RegExp(
+        `<c\\b([^>]*\\br="${escapedReference}"[^>]*)\\/>`
+      );
+
+      const match =
+        rowXml.match(selfClosing) ||
+        rowXml.match(paired);
+
+      const column =
+        reference.match(/^[A-Z]+/)[0];
+
+      let attributes = match
+        ? match[1]
+        : (
+            ` r="${reference}" s="` +
+            `${COURIER_DATA_STYLE_IDS[column] || 0}"`
+          );
+
+      attributes = attributes
+        .replace(/\/\s*$/, "")
+        .replace(
+          /\s+t="[^"]*"/g,
+          ""
+        );
+
+      let cellXml;
+
+      if (type === "blank") {
+        cellXml = `<c${attributes}/>`;
+      } else if (type === "number") {
+        const number = Number(value);
+
+        cellXml =
+          `<c${attributes}>` +
+            `<v>${Number.isFinite(number) ? number : 0}</v>` +
+          `</c>`;
+      } else {
+        const text = cleanXmlText(
+          String(value == null ? "" : value)
+        );
+
+        cellXml =
+          `<c${attributes} t="inlineStr">` +
+            `<is><t xml:space="preserve">` +
+              escapeXml(text) +
+            `</t></is>` +
+          `</c>`;
+      }
+
+      if (match) {
+        return rowXml.replace(
+          match[0],
+          cellXml
+        );
+      }
+
+      return insertCourierWorksheetCell(
+        rowXml,
+        reference,
+        cellXml
+      );
+    }
+
+    function insertCourierWorksheetCell(
+      rowXml,
+      reference,
+      cellXml
+    ) {
+      const targetColumn =
+        xlsxColumnNumber(
+          reference.match(/^[A-Z]+/)[0]
+        );
+
+      const pattern =
+        /<c\b[^>]*\br="([A-Z]+)\d+"[^>]*(?:\/>|>[\s\S]*?<\/c>)/g;
+
+      let match;
+
+      while (
+        (match = pattern.exec(rowXml))
+      ) {
+        if (
+          xlsxColumnNumber(match[1]) >
+          targetColumn
+        ) {
+          return (
+            rowXml.slice(0, match.index) +
+            cellXml +
+            rowXml.slice(match.index)
+          );
+        }
+      }
+
+      return rowXml.replace(
+        "</row>",
+        `${cellXml}</row>`
+      );
+    }
+
+    function decodeBase64Bytes(value) {
+      const binary = atob(value);
+      const bytes =
+        new Uint8Array(binary.length);
+
+      for (
+        let index = 0;
+        index < binary.length;
+        index++
+      ) {
+        bytes[index] =
+          binary.charCodeAt(index);
+      }
+
+      return bytes;
+    }
+
+    function decodeZipText(bytes) {
+      return new TextDecoder("utf-8")
+        .decode(bytes);
+    }
+
+    async function readZipEntries(input) {
+      const bytes = input instanceof Uint8Array
+        ? input
+        : new Uint8Array(input);
+
+      const view = new DataView(
+        bytes.buffer,
+        bytes.byteOffset,
+        bytes.byteLength
+      );
+
+      let endOffset = -1;
+      const minimum = Math.max(
+        0,
+        bytes.length - 65557
+      );
+
+      for (
+        let offset = bytes.length - 22;
+        offset >= minimum;
+        offset--
+      ) {
+        if (
+          view.getUint32(offset, true) ===
+          0x06054b50
+        ) {
+          endOffset = offset;
+          break;
+        }
+      }
+
+      if (endOffset === -1) {
+        throw new Error(
+          "檔案不是有效的 XLSX ZIP"
+        );
+      }
+
+      const entryCount =
+        view.getUint16(
+          endOffset + 10,
+          true
+        );
+
+      let centralOffset =
+        view.getUint32(
+          endOffset + 16,
+          true
+        );
+
+      const entries = {};
+      const decoder = new TextDecoder("utf-8");
+
+      for (
+        let index = 0;
+        index < entryCount;
+        index++
+      ) {
+        if (
+          view.getUint32(
+            centralOffset,
+            true
+          ) !== 0x02014b50
+        ) {
+          throw new Error(
+            "XLSX ZIP 中央目錄損壞"
+          );
+        }
+
+        const flags = view.getUint16(
+          centralOffset + 8,
+          true
+        );
+
+        const method = view.getUint16(
+          centralOffset + 10,
+          true
+        );
+
+        const compressedSize =
+          view.getUint32(
+            centralOffset + 20,
+            true
+          );
+
+        const uncompressedSize =
+          view.getUint32(
+            centralOffset + 24,
+            true
+          );
+
+        const nameLength =
+          view.getUint16(
+            centralOffset + 28,
+            true
+          );
+
+        const extraLength =
+          view.getUint16(
+            centralOffset + 30,
+            true
+          );
+
+        const commentLength =
+          view.getUint16(
+            centralOffset + 32,
+            true
+          );
+
+        const localOffset =
+          view.getUint32(
+            centralOffset + 42,
+            true
+          );
+
+        const name = decoder.decode(
+          bytes.subarray(
+            centralOffset + 46,
+            centralOffset + 46 +
+              nameLength
+          )
+        );
+
+        if (flags & 0x0001) {
+          throw new Error(
+            "不支援加密的 XLSX"
+          );
+        }
+
+        if (!name.endsWith("/")) {
+          const localNameLength =
+            view.getUint16(
+              localOffset + 26,
+              true
+            );
+
+          const localExtraLength =
+            view.getUint16(
+              localOffset + 28,
+              true
+            );
+
+          const dataStart =
+            localOffset + 30 +
+            localNameLength +
+            localExtraLength;
+
+          const compressed =
+            bytes.slice(
+              dataStart,
+              dataStart + compressedSize
+            );
+
+          let data;
+
+          if (method === 0) {
+            data = compressed;
+          } else if (method === 8) {
+            data =
+              await inflateZipEntry(
+                compressed
+              );
+          } else {
+            throw new Error(
+              `不支援 XLSX ZIP 壓縮方式 ${method}`
+            );
+          }
+
+          if (
+            uncompressedSize !== 0 &&
+            data.length !== uncompressedSize
+          ) {
+            throw new Error(
+              `XLSX 內的 ${name} 解壓縮大小不符`
+            );
+          }
+
+          entries[name] = data;
+        }
+
+        centralOffset +=
+          46 + nameLength +
+          extraLength + commentLength;
+      }
+
+      return entries;
+    }
+
+    async function inflateZipEntry(data) {
+      if (
+        typeof DecompressionStream ===
+        "undefined"
+      ) {
+        throw new Error(
+          "目前瀏覽器不支援讀取壓縮 XLSX，請改用最新版 Chrome、Edge 或 Safari"
+        );
+      }
+
+      const stream =
+        new Blob([data])
+          .stream()
+          .pipeThrough(
+            new DecompressionStream(
+              "deflate-raw"
+            )
+          );
+
+      return new Uint8Array(
+        await new Response(stream)
+          .arrayBuffer()
+      );
     }
 
     function getSelectedMode() {
@@ -1430,25 +5388,7 @@
           getSelectedMode()
         );
 
-      const visibleGroups = [];
-
-      let displayedRows = 0;
-
-      for (
-        const group of data.groups
-      ) {
-        if (
-          displayedRows >= 40 &&
-          visibleGroups.length
-        ) {
-          break;
-        }
-
-        visibleGroups.push(group);
-
-        displayedRows +=
-          group.products.length;
-      }
+      const visibleGroups = data.groups;
 
       const headerHtml =
         columns
@@ -2730,7 +6670,11 @@
       );
     }
 
-    function createZip(files) {
+    function createZip(
+      files,
+      mimeType =
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    ) {
       const encoder =
         new TextEncoder();
 
@@ -2748,7 +6692,9 @@
           encoder.encode(name);
 
         const dataBytes =
-          encoder.encode(content);
+          content instanceof Uint8Array
+            ? content
+            : encoder.encode(content);
 
         const crc =
           calculateCrc32(
@@ -3047,8 +6993,7 @@
           end
         ],
         {
-          type:
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          type: mimeType
         }
       );
     }
